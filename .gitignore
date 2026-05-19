@@ -1,0 +1,41 @@
+# 编译产物
+*.o
+*.elf
+*.bin
+*.hex
+*.map
+*.ko
+*.mod
+*.mod.c
+*.mod.o
+*.symvers
+*.order
+.tmp_versions/
+
+# Verilog 仿真产物
+*.vvp
+*.vcd
+*.fst
+*.gtkw
+
+# 通用可执行（PC 端示例编出来的）
+01_数字与逻辑基础/code/bitops
+03_C语言再训练/code/mem_layout
+03_C语言再训练/code/struct_pad
+03_C语言再训练/code/atomic_race
+03_C语言再训练/code/volatile_demo
+18_CAN_CANFD/code/socketcan_demo/sender
+18_CAN_CANFD/code/socketcan_demo/receiver
+
+# IDE / 本地配置
+.claude/
+.vscode/
+.idea/
+*.swp
+*~
+.DS_Store
+
+# Build 目录
+build/
+output/
+obj_dir/
