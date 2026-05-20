@@ -6,6 +6,8 @@
 
 ---
 
+![DMA配图](images/ping_pong.png)
+
 ## 13.1 心智模型：DMA 是"第二个 CPU"
 
 DMA = **Direct Memory Access** = 一个能自己读 / 写内存和外设的硬件单元，不需要 CPU 帮忙。
@@ -28,6 +30,8 @@ CPU 只在**启动 DMA** 和**收到 DMA 完成中断**时介入。中间几百 
                        去干别的     专心搬
 ```
 
+![13.1 心智模型：DMA 是"第二个 CPU"](images/generated/dma_vs_cpu_transfer.png)
+
 **最大收益**：在高带宽 / 低 CPU 频率场景。比如 1 Mbit/s 串口流式接收，纯 CPU 中断每个字节都要打断 → 利用率爆炸；DMA 每 N 字节才中断一次。
 
 ---
@@ -39,6 +43,8 @@ CPU 只在**启动 DMA** 和**收到 DMA 完成中断**时介入。中间几百 
 ② Peripheral → Memory  (外设接收时的"灌入"内存)
 ③ Memory → Peripheral  (内存里准备好的数据"推出"到外设)
 ```
+
+![13.2 三类传输](images/generated/dma_transfer_types.png)
 
 第 ② / ③ 类需要 **外设触发**：外设说"我现在有 / 要数据了"，DMA 才搬一笔。常见触发源：
 - UART RX 不空、UART TX FIFO 不满

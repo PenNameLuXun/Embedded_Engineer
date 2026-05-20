@@ -6,6 +6,8 @@
 
 ---
 
+![数字电路与时序配图](images/two_flop_synchronizer.png)
+
 ## 5.1 D 触发器再看一次：完整时序参数
 
 第 01 章我们说"D 触发器在时钟边沿采样 D，锁到 Q"。完整的参数：
@@ -21,6 +23,8 @@
                           T_clk_to_Q 后
    Q ─────────────────────────────────█████████──
 ```
+
+![D 触发器完整时序参数](images/dff_timing_parameters.png)
 
 | 参数             | 含义                                    |
 |------------------|-----------------------------------------|
@@ -62,6 +66,8 @@ T_clk_to_Q + T_pd + T_setup <= T_clk_period
                               一段不定时间后随机停 0 或 1
 ```
 
+![违反时序：亚稳态](images/generated/metastability_timing.png)
+
 后果：
 - 下游电路把 Q 当 0 用，另一路把 Q 当 1 用 → 状态机分裂
 - 通过组合逻辑链可能传播 → 多个 FF 一起亚稳
@@ -79,6 +85,8 @@ T_clk_to_Q + T_pd + T_setup <= T_clk_period
   clk_b  ──╱──╲___╱──╲___╱──╲_
 ```
 
+![跨时钟域：两个独立时钟](images/generated/clock_domain_crossing.png)
+
 如果 A 域产生的信号直接接到 B 域的 FF，**B 域 FF 一定会随机违反 setup/hold** → 亚稳态频繁发生。
 
 ### 同步器：两级 FF (Two-Flop Synchronizer)
@@ -91,6 +99,8 @@ T_clk_to_Q + T_pd + T_setup <= T_clk_period
             (无)│       │
                  clk_b   clk_b
 ```
+
+![两级 FF 同步器](images/generated/two_flop_synchronizer_generated.png)
 
 原理：FF1 可能亚稳，但**有一整个时钟周期**给它稳。到 FF2 输入时已大概率稳到 0 或 1。两级把"还在亚稳"的概率降到工程可接受（**MTBF** 计算）。
 
@@ -133,6 +143,8 @@ C   ─────────
 Y   ─────╲_/───   ← 一个毛刺
 ```
 
+![组合逻辑毛刺与冒险](images/generated/glitch_hazard.png)
+
 **关键点**：
 - 毛刺只对 **组合逻辑输出直接接到外部 / 用于异步触发** 时才是问题。
 - 进入 FF 的 D 上有毛刺，**没事** —— 时钟边沿采样时它已经稳了。
@@ -153,6 +165,8 @@ Y   ─────╲_/───   ← 一个毛刺
    inputs ─→ [next_state logic] ──→ FF ──┬─→ [output logic] ─→ outputs
               ↑___________________________│
 ```
+
+![Moore 状态机与 Mealy 状态机对比](images/generated/moore_vs_mealy.png)
 
 ### Mealy 机
 输出看**当前状态 + 输入**：
@@ -183,6 +197,8 @@ Y   ─────╲_/───   ← 一个毛刺
                     pipe     pipe     pipe
         Fmax 高（每段短），但延迟 (latency) 多了几拍
 ```
+
+![RTL 流水线切分组合逻辑](images/generated/rtl_pipeline.png)
 
 吞吐率 ↑，但 latency ↑。第 37 章 AXI 协议里你会看到大量这种流水设计。
 

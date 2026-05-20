@@ -6,6 +6,8 @@
 
 ---
 
+![Zephyr上手配图](images/zephyr_layers.png)
+
 ## 26.1 Zephyr 是什么
 
 Zephyr 项目 2016 年由 Linux 基金会启动，目标：**做一个 Apache 2.0 协议的"小型 Linux 风格"RTOS**。今天 Intel、NXP、Nordic、Antmicro 等公司都重度投入。
@@ -50,6 +52,8 @@ my_app/
 └── src/
     └── main.c
 ```
+
+![26.3 项目结构](images/ascii/ascii_01_26_3_7740be41.png)
 
 ### main.c
 

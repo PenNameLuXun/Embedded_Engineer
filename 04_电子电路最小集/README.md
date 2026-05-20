@@ -6,6 +6,8 @@
 
 ---
 
+![电子电路最小集配图](images/push_pull_vs_open_drain.png)
+
 ## 4.1 三大基本量与欧姆定律
 
 | 量      | 符号 | 单位 | 直觉                       |
@@ -44,6 +46,8 @@
 V_out = VCC × R2 / (R1 + R2)
 ```
 
+![4.2 电压分压器：你会画一千次的电路](images/generated/voltage_divider.png)
+
 **用途**：
 - 把 5 V 信号降到 MCU 能吃的 3.3 V（短期、低速场合）
 - 给 ADC 喂一个固定参考
@@ -73,6 +77,8 @@ V_out = VCC × R2 / (R1 + R2)
    GND
 ```
 
+![4.3 上拉 / 下拉 / 开漏 / 推挽](images/generated/push_pull_gpio.png)
+
 - **特点**：能强力输出 0 和 1。
 - **缺点**：多个输出短在一起会"打架"（一个推 1 一个推 0 → 大电流烧 MOS）。
 - **用途**：单端、点对点的输出，比如点 LED、驱动 SPI MOSI。
@@ -88,6 +94,8 @@ V_out = VCC × R2 / (R1 + R2)
           │
          GND
 ```
+
+![4.3 上拉 / 下拉 / 开漏 / 推挽](images/generated/open_drain_pullup.png)
 
 - 引脚靠**外部上拉电阻**回到高电平。
 - 多个开漏输出可以并在同一根线上：**"线与" (wired-AND)** —— 任何一个拉低线就低，全释放才高。
@@ -145,6 +153,8 @@ Cortex-M 系列 GPIO 一般内置可选的上拉 / 下拉（也是几十 kΩ 弱
 截止频率： f_c = 1 / (2π × R × C)
 ```
 
+![4.4 电容：嵌入式里最常见的元件](images/generated/rc_filters.png)
+
 按下截止频率以下"放过"，以上"压平"（低通）。模拟传感器输入 ADC 之前几乎都加 RC 低通去噪声。
 
 ### ③ 耦合 (Coupling)
@@ -186,6 +196,8 @@ Cortex-M 系列 GPIO 一般内置可选的上拉 / 下拉（也是几十 kΩ 弱
                     ├──> 差分接收器 → 数据
   TX_N  ────────  ──┘
 ```
+
+![4.6 信号传输：单端 vs 差分](images/generated/single_ended_vs_differential.png)
 
 为什么强？因为环境噪声会同时叠加在两根线上（共模噪声），相减就抵消。
 代表：USB、Ethernet、HDMI、PCIe、MIPI、CAN、LVDS、差分时钟。

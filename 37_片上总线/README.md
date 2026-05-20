@@ -6,6 +6,8 @@
 
 ---
 
+![片上总线配图](images/soc_bus_hierarchy.png)
+
 ## 37.1 三个总线，三个层级
 
 ARM AMBA 协议族，按性能从高到低：
@@ -41,6 +43,8 @@ ARM AMBA 协议族，按性能从高到低：
         └──────────┘
 ```
 
+![37.1 三个总线，三个层级](images/ascii/ascii_01_37_1_69b54ab7.png)
+
 层级化是为了**性能与复杂度平衡**：CPU 跑得快，但 UART 一个寄存器 32 字节足够，没必要走 AXI 的全部握手开销。
 
 ---
@@ -62,6 +66,8 @@ ARM AMBA 协议族，按性能从高到低：
                      ↑
                   完成
 ```
+
+![37.2 APB：最简单](images/ascii/ascii_02_37_2_apb_46a024ce.png)
 
 握手周期：
 1. **SETUP 阶段**：PSEL=1，PENABLE=0，给地址数据
@@ -85,6 +91,8 @@ ARM AMBA 协议族，按性能从高到低：
             事务完成
 ```
 
+![37.3 AHB：管道化的升级](images/ascii/ascii_03_37_3_ahb_ea8a8ab5.png)
+
 AHB-Lite 是简化版（去掉 burst 仲裁），常用于单主多从场景。
 
 支持 burst（连续多字访问）但**单主独占总线**，多主要做仲裁。
@@ -104,6 +112,8 @@ AXI4 是真正的"现代"总线：
             ←────────── R  (Read Data) ────────────────
 ```
 
+![37.4 AXI：五通道独立](images/ascii/ascii_04_37_4_axi_f5872a78.png)
+
 **5 个独立通道**，每个通道独立 valid/ready 握手：
 
 ```
@@ -112,6 +122,8 @@ AXI4 是真正的"现代"总线：
                        ↑
                   此拍传输发生
 ```
+
+![37.4 AXI：五通道独立](images/ascii/ascii_05_37_4_axi_0c97fe86.png)
 
 带来的能力：
 - **完全乱序**：write 和 read 不阻塞彼此
@@ -223,6 +235,8 @@ endmodule
                 ├──── 外设域
                 └────  ...
 ```
+
+![37.7 互连 / 交叉开关](images/ascii/ascii_06_37_7_a5cbaecb.png)
 
 Xilinx Vivado、Intel Quartus 都有 IP 生成器，画框框 + 连线生成 SystemVerilog 互连。手写互连罕见（除非超紧资源）。
 

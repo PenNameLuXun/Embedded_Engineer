@@ -6,6 +6,8 @@
 
 ---
 
+![嵌入式安全配图](images/trust_chain.png)
+
 ## 40.1 安全的三大支柱
 
 1. **机密性 (Confidentiality)**：固件 / 密钥 / 数据不被读取
@@ -38,6 +40,8 @@
                 └───────────────────────────┘
 ```
 
+![40.2 Root of Trust：信任从哪开始](images/ascii/ascii_01_40_2_root_of_trust_312a94de.png)
+
 **Root of Trust (RoT)** = 信任链的最底层 = **不可改的硬件**。  
 通常是：芯片厂商 burn 在 OTP / e-Fuse 里的一个公钥哈希。
 
@@ -58,6 +62,8 @@
 6. U-Boot 加载 Kernel + DTB + initramfs (FIT 镜像，含签名)
 7. 全链路验证通过 → Linux 启动
 ```
+
+![40.3 Secure Boot](images/ascii/ascii_02_40_3_secure_boot_d8efe45e.png)
 
 **关键点**：私钥永远不上设备，只在厂家签名服务器里。被攻破 = 召回。
 
@@ -82,6 +88,8 @@ ARM 的硬件级"两个世界"：
                        ↑↓ 单一 CPU 切换
                     通过 SMC 指令 + Monitor 模式
 ```
+
+![40.4 ARM TrustZone](images/ascii/ascii_03_40_4_arm_trustzone_83973eb1.png)
 
 - **TrustZone-A (Cortex-A)**：用 SMC 指令切换；OP-TEE / Trusty 是 Secure OS。常用于手机指纹、DRM、移动支付。
 - **TrustZone-M (Cortex-M23/M33/...)**：内存按区划分 secure / non-secure，硬件保护 secure 内存。常用于 IoT 设备隔离 BLE 密钥 / OTA 验证。

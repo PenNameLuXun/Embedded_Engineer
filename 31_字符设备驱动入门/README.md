@@ -6,6 +6,8 @@
 
 ---
 
+![字符设备驱动入门配图](images/vfs_dispatch.png)
+
 ## 31.1 用户态如何"看见"内核驱动
 
 ```
@@ -18,6 +20,8 @@ VFS:      file_operations.read(file, buf, count, ppos)
               ↓
 my_drv:   static ssize_t my_read(struct file *f, ...) { ... }
 ```
+
+![31.1 用户态如何"看见"内核驱动](images/ascii/ascii_01_31_1_51300f6e.png)
 
 **所有 syscall 通过 file_operations 函数指针表派发到具体驱动**。这是 Linux 的"一切皆文件"哲学。
 

@@ -6,6 +6,8 @@
 
 ---
 
+![低功耗设计配图](images/power_modes.png)
+
 ## 41.1 CMOS 功耗的两部分
 
 ```
@@ -18,6 +20,8 @@
 
 静态 = V × I_leak    (晶体管漏电流，与温度强相关)
 ```
+
+![41.1 CMOS 功耗的两部分](images/ascii/ascii_01_41_1_cmos_738e07ec.png)
 
 含义：
 - **降电压**最有效（平方关系）。1.8 V → 0.9 V 功耗变 1/4
@@ -50,6 +54,8 @@
                   └── enable ──┘
 ```
 
+![41.3 时钟门控 (Clock Gating)](images/ascii/ascii_02_41_3_clock_gating_745e9738.png)
+
 不工作的模块用 `enable=0` 把它的时钟掐了 → 动态功耗瞬间归零（FF 不翻就不耗）。
 
 综合工具能**自动插入时钟门控**，但前提是 RTL 写法允许：
@@ -80,6 +86,8 @@ always @(posedge clk)
    ├──→ RTC 域 (3.0 V)         │  ← 永不下电
    └──→ I/O (3.3 V)            │
 ```
+
+![41.4 电源域 (Power Domain)](images/ascii/ascii_03_41_4_power_domain_8ed9a496.png)
 
 下电前要**保存关键状态到不掉电区**，重新上电后恢复。这个机制叫 **state retention** —— ARM 的 PowerQuad 等专门做。
 
@@ -129,6 +137,8 @@ mA ↑
 
        ↑ 平均 ≈ 30 µA → 一节 AA 电池 (2000 mAh) 跑 8 年
 ```
+
+![41.7 一个 IoT 节点的功耗曲线](images/ascii/ascii_04_41_7_iot_66124147.png)
 
 设计目标：**让大部分时间花在最深 sleep；醒来时高效干活、马上睡回去**。
 

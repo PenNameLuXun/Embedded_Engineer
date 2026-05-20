@@ -6,6 +6,8 @@
 
 ---
 
+![OTA_固件升级配图](images/ab_partition.png)
+
 ## 42.1 OTA 的工程难题
 
 设备远在外面，升级时不能假设：
@@ -40,6 +42,8 @@ Flash:
 - 步骤 4 之前失败：A 仍是当前，无影响
 - 步骤 6 后 B 崩 → 下次回 A
 ```
+
+![42.2 A/B 分区方案](images/ascii/ascii_01_42_2_a_b_9a3a4850.png)
 
 **核心保证**：永远有一个能用的固件存在，升级失败可回滚。
 
@@ -136,6 +140,8 @@ Cortex-A 主核管 OTA 下载 + 验签，把固件**通过 RPMsg 协议**推给 
    ──── RPMsg 协议传 ─────→ 写 Flash + 重启
 ```
 
+![42.7 RPMsg：异构多核 OTA](images/ascii/ascii_02_42_7_rpmsg_ota_ca0cffbb.png)
+
 异构 SoC OTA 协调比单核复杂。
 
 ---
@@ -153,6 +159,8 @@ boot_loader (256 KB)
     +-- 验签 (RSA-2048 / Ed25519)
     +-- 跳目标分区
 ```
+
+![42.8 一个完整 MCUboot 实战配置（pseudocode）](images/ascii/ascii_03_42_8_mcuboot_pseudocode_8db2bcd8.png)
 
 ```
 应用：

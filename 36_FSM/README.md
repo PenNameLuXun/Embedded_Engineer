@@ -6,6 +6,8 @@
 
 ---
 
+![FSM配图](images/uart_rx_fsm.png)
+
 ## 36.1 FSM 三段式写法
 
 工业界推荐的 FSM 写法是 **3-process**（三段式）：

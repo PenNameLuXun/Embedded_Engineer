@@ -6,6 +6,8 @@
 
 ---
 
+![Verilog入门配图](images/counter_waveform.png)
+
 ## 35.1 软件 vs 硬件描述语言
 
 ```

@@ -6,6 +6,8 @@
 
 ---
 
+![定时器与SysTick配图](images/systick_periodic.png)
+
 ## 12.1 时基的三种来源
 
 | 来源              | 分辨率           | 用途                                |
@@ -130,6 +132,8 @@ PWM = Pulse-Width Modulation = 用一定频率方波的"占空比"携带信息 /
     │    │ │    │ │    
 低 ─┘────┘ └────┘ └─    占空比 ≈ 33%
 ```
+
+![12.4 PWM 速览](images/generated/pwm_duty_cycle.png)
 
 **用途**：
 - 调节 LED 亮度（频率 > 100 Hz 人眼看不到闪烁）

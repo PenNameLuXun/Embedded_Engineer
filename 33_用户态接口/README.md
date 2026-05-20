@@ -6,6 +6,8 @@
 
 ---
 
+![用户态接口配图](images/user_interfaces.png)
+
 ## 33.1 五条通道速查
 
 | 通道       | 双向 | 推送/拉取 | 复杂度 | 典型用途                              |
@@ -176,6 +178,8 @@ V4L2、KVM、DRM 都重度用 ioctl。**新内核风格用 fdget 系列把 ioctl
 要复杂结构体或命令式控制？
    └── ioctl
 ```
+
+![33.8 怎么选？决策树](images/ascii/ascii_01_33_8_2ed0f3d9.png)
 
 90% 嵌入式驱动用 **sysfs 配置 + chrdev 数据 + uevent 通知**。
 

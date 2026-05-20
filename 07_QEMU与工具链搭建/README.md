@@ -6,6 +6,8 @@
 
 ---
 
+![QEMU与工具链搭建配图](images/toolchain_flow.png)
+
 ## 7.1 我们要装哪些东西
 
 | 工具                       | 角色                                     | 包名 (Debian/Ubuntu)         |
@@ -78,6 +80,8 @@ UART0 是 ARM PL011 风格的：
 ├── linker.ld      ← 内存布局
 └── Makefile       ← 一键编译 + 跑
 ```
+
+![7.3 第一个程序：Hello, embedded world!](images/generated/hello_project_structure.png)
 
 ### 主程序 `hello.c`
 

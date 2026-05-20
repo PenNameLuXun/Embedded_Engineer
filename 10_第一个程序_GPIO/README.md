@@ -6,6 +6,8 @@
 
 ---
 
+![第一个程序_GPIO配图](images/uart_init_steps.png)
+
 ## 10.1 我们要"假装"的板子
 
 QEMU 的 `lm3s6965evb` 模拟一颗 LM3S6965（Cortex-M3 @ 50 MHz），外设里我们用得着的：
@@ -185,6 +187,8 @@ code/03_echo/
 ├── main.c         ← 应用：UART echo + LED 闪烁计数
 └── Makefile
 ```
+
+![10.6 项目结构（后续章节都用这套）](images/generated/gpio_uart_echo_project.png)
 
 `main.c` 的关键循环：
 

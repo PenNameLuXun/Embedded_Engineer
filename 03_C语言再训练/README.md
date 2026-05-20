@@ -6,6 +6,8 @@
 
 ---
 
+![C语言再训练配图](images/memory_layout.png)
+
 ## 3.1 一个嵌入式 C 程序的"全景"
 
 ```
@@ -33,6 +35,8 @@
        │  中断向量表                  │
        └─────────────────────────────┘  0x0000_0000
 ```
+
+![3.1 一个嵌入式 C 程序的"全景"](images/generated/embedded_c_memory_layout.png)
 
 **关键事实**：
 - `.text` / `.rodata` 放在 **Flash**（不可写，掉电不丢）。

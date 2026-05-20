@@ -6,6 +6,8 @@
 
 ---
 
+![边缘AI配图](images/edge_ai_workflow.png)
+
 ## 43.1 为什么 MCU 不直接跑普通 TF / PyTorch
 
 | 维度       | PyTorch 模型              | MCU 实际             |
@@ -33,6 +35,8 @@
               ↓ 编译进 MCU 固件
    MCU 跑推理 + CMSIS-NN 加速算子
 ```
+
+![43.2 工具链全景](images/ascii/ascii_01_43_2_35036c77.png)
 
 每一步都涉及精度损失 / 模型大小 / 速度的权衡。
 

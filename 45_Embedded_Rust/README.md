@@ -6,6 +6,8 @@
 
 ---
 
+![Embedded_Rust配图](images/rust_layers.png)
+
 ## 45.1 为什么是 Rust
 
 Rust 在嵌入式吸引人的核心特性：
@@ -41,6 +43,8 @@ C 几十年的"教育"经验告诉我们：**最坏 bug 不是逻辑错，是 me
 │  cortex-m / riscv runtime + 启动 crate │
 └──────────────────────────────────────┘
 ```
+
+![45.2 三层抽象：PAC → HAL → BSP](images/ascii/ascii_01_45_2_pac_hal_bsp_a1eb3128.png)
 
 **PAC** 给你 `peripheral.uart0.dr.write(...)` —— 安全的寄存器访问。  
 **HAL** 给你 `let mut serial = Serial::new(...); serial.write(b"hi")` —— 跨芯片可移植 API。  

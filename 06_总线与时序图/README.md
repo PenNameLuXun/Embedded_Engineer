@@ -6,6 +6,8 @@
 
 ---
 
+![总线与时序图配图](images/valid_ready_handshake.png)
+
 ## 6.1 时序图的"语法"
 
 ```
@@ -21,6 +23,8 @@
                   ↑                ↑
                   setup time       hold
 ```
+
+![6.1 时序图的"语法"](images/generated/timing_diagram_grammar.png)
 
 | 画法          | 含义                                            |
 |---------------|-------------------------------------------------|
@@ -74,6 +78,8 @@
    状态:  idle | req | accept | drop_req | drop_ack | idle
 ```
 
+![6.3 握手 (Handshake) 协议](images/generated/req_ack_four_phase.png)
+
 - 主：拉高 `req`
 - 从：看到 `req` 后开始处理；做完拉高 `ack`
 - 主：看到 `ack` 撤销 `req`
@@ -93,6 +99,8 @@
                        ↑
                   在这个边沿数据被采走
 ```
+
+![6.3 握手 (Handshake) 协议](images/generated/valid_ready_handshake_direct.png)
 
 **核心规则**：握手只在 `valid && ready` **同时** 为高的那一拍发生。  
 **约束**：`valid` 一旦拉高，**不能在 `ready` 来之前撤**（避免数据丢失）。
@@ -114,6 +122,8 @@
             ↑
             slave 在 nCS 拉低后 t_d 内驱动 MISO
 ```
+
+![6.4 一个典型芯片手册里的 SPI 时序图（口头剖析）](images/generated/spi_datasheet_timing.png)
 
 手册附表会给：
 - `f_SCK_max`：最大时钟频率
@@ -141,6 +151,8 @@
    last   ────────────────────────────┌──┐──
                                        └──┘
 ```
+
+![6.5 burst / 流水：吞吐量怎么撑起来](images/generated/burst_pipeline_transfer.png)
 
 - 第一次握手发起 burst
 - 之后每个时钟一个 beat（如果双方一直都 ready）

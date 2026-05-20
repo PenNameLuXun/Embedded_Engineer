@@ -6,6 +6,8 @@
 
 ---
 
+![交叉编译_Buildroot配图](images/buildroot_output.png)
+
 ## 29.1 为什么要交叉编译
 
 ```
@@ -18,6 +20,8 @@
    解决：用 ARM 目标的 gcc → arm-linux-gnueabihf-gcc
    它跑在 x86_64 上，但输出 ARM 二进制 → 即"交叉编译"
 ```
+
+![29.1 为什么要交叉编译](images/ascii/ascii_01_29_1_be8828be.png)
 
 工具链命名约定：`<arch>-<vendor>-<os>-<libc>-gcc`，例：
 - `arm-linux-gnueabihf-gcc`：ARM + Linux + glibc + hard-float
@@ -152,6 +156,8 @@ buildroot/
 └── output/      ← build 产物
 ```
 
+![29.5 Buildroot 的工作方式](images/ascii/ascii_02_29_5_buildroot_30d66d8c.png)
+
 加一个新包：写 `package/myapp/Config.in` 和 `package/myapp/myapp.mk`，注册到 `package/Config.in`。Buildroot 自动 download → extract → patch → configure → build → install 到 staging / target。
 
 ---
@@ -210,6 +216,8 @@ rootfs/
 ├── sys/
 └── lib/  (含动态库)
 ```
+
+![29.8 一个最小 rootfs 怎么构造](images/ascii/ascii_03_29_8_rootfs_1086c0c4.png)
 
 打包：
 ```bash

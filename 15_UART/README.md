@@ -6,6 +6,8 @@
 
 ---
 
+![UART配图](images/uart_frame.png)
+
 ## 15.1 一句话定义
 
 UART = **Universal Asynchronous Receiver/Transmitter** = "通用异步收发器"。  
@@ -25,6 +27,8 @@ UART = **Universal Asynchronous Receiver/Transmitter** = "通用异步收发器"
        ↑              ↑                                       ↑
    下降沿触发    每位 = 1 / baud 秒                          stop 之后线归 idle
 ```
+
+![15.2 线上一帧长什么样](images/generated/uart_8n1_frame.png)
 
 **关键事实**：
 - 空闲态 = 高电平（这是 UART 的标志，反过来是 RS232 的电平规约）
@@ -46,12 +50,16 @@ UART = **Universal Asynchronous Receiver/Transmitter** = "通用异步收发器"
                           └── 分频系数：N = f_clk / baud
 ```
 
+![15.3 波特率是怎么生成的](images/generated/uart_tx_baud_generator.png)
+
 接收端常用 **过采样 (oversampling)**：以 16 × baud 的频率采线状态，得到更准的边沿和数据：
 ```
    主时钟 ────→ [波特率发生器] ────→ rx_tick (= 16 × baud Hz)
    起始位下降沿 → 计数到 8 (中间) → 第一次采数据
    之后每 16 个 tick 采一次数据位
 ```
+
+![15.3 波特率是怎么生成的](images/generated/uart_rx_oversampling.png)
 
 **为什么过采样 16×？**
 - 抖动容忍：边沿偏移最多 ±1/16 位仍能在数据中点采到正确电平
@@ -100,6 +108,8 @@ PL011 / 16550 等都有 **FE / PE / OE 状态位**，软件每读一字节顺便
 │                              └───────────────┘               │
 └─────────────────────────────────────────────────────────────┘
 ```
+
+![15.5 UART IP 核内部](images/generated/uart_ip_internal.png)
 
 - **TX FSM**：状态 idle → start → data0 → data1 → ... → data7 → stop → idle
 - **RX FSM**：状态 idle → start_detect → wait_mid → sample_data... → stop_check → idle

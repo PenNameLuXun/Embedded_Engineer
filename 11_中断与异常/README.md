@@ -6,6 +6,8 @@
 
 ---
 
+![中断与异常配图](images/isr_entry_flow.png)
+
 ## 11.1 中断 vs 异常 vs 故障
 
 - **异常 (Exception)**：CPU 因为内部原因被打断（除零、非法指令、SVC 调用）。

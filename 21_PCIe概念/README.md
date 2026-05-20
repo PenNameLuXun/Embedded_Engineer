@@ -6,6 +6,8 @@
 
 ---
 
+![PCIe概念配图](images/topology.png)
+
 ## 21.1 PCIe 不是 PCI 加了 e
 
 经典 PCI 是 **并行共享总线** + 仲裁，所有设备挂同一组信号线。PCIe 完全不一样：**点到点 + 串行 + packet switched**。
@@ -51,6 +53,8 @@
 └─────────────────────────────────────┘
 ```
 
+![21.3 PCIe 分三层](images/generated/pcie_three_layers.png)
+
 软件能"看到"的只到 **TLP (Transaction Layer Packet)**。
 
 ---
@@ -83,6 +87,8 @@ lspci -v 输出示例（节选）：
     Memory at f0100000 (32-bit, prefetchable)   [size=16K]       ← BAR2
     Expansion ROM at f0200000 [disabled] [size=128K]
 ```
+
+![21.4 配置空间与 BAR](images/generated/pcie_config_space_bar.png)
 
 **驱动要做的第一件事就是 ioremap 这些 BAR**，得到一个 `void __iomem *base`，然后 `iowrite32(val, base + OFFSET)` 操作设备寄存器。和 MMIO 一脉相承。
 
@@ -120,6 +126,8 @@ CPU 想读设备的 BAR0+0x10：
             ↓
    CPU 端中断控制器 (NVIC / GIC / LAPIC) 看到这个写 → 触发中断
 ```
+
+![21.6 MSI / MSI-X：中断也是 packet](images/generated/pcie_msi_msix.png)
 
 **优势**：
 - 没有共享线，没有"哪个设备触发了"的歧义

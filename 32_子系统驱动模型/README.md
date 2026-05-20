@@ -6,6 +6,8 @@
 
 ---
 
+![子系统驱动模型配图](images/device_driver_bus.png)
+
 ## 32.1 Linux 设备模型核心：device / driver / bus
 
 ```
@@ -21,6 +23,8 @@
                      │
                 drv->probe(dev)
 ```
+
+![32.1 Linux 设备模型核心：device / driver / bus](images/ascii/ascii_01_32_1_linux_device_driver_bus_70661822.png)
 
 每条 **bus** 维护两张表：device 表 + driver 表。**bus.match()** 决定怎么配对。
 

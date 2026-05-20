@@ -6,6 +6,8 @@
 
 ---
 
+![无线协议入门配图](images/wireless_matrix.png)
+
 ## 23.1 三家选型矩阵
 
 | 维度        | BLE              | Wi-Fi 4/5/6      | LoRa / LoRaWAN     |
@@ -49,6 +51,8 @@
 └─────────────────────────────────────┘
 ```
 
+![23.2 BLE：Bluetooth Low Energy](images/generated/ble_stack_layers.png)
+
 ### GAP：广播 + 连接
 
 ```
@@ -63,6 +67,8 @@
    │                                        │
    │       建立连接，进入数据交换           │
 ```
+
+![23.2 BLE：Bluetooth Low Energy](images/generated/ble_gap_advertising_connection.png)
 
 **广播包**最多 31 字节，里面塞名字 + 部分服务 UUID + 厂商数据。iBeacon、Eddystone 信标只发广播不建立连接。
 
@@ -80,6 +86,8 @@ Device
 │   ├─ Characteristic 1: 温度（读）
 │   └─ Characteristic 2: 设置间隔（写）
 ```
+
+![23.2 BLE：Bluetooth Low Energy](images/generated/ble_gatt_tree.png)
 
 **Central** 连上后用 ATT 协议读 / 写 / 订阅特征值。这是 BLE 应用层一切的基础。
 
@@ -160,6 +168,8 @@ LoRaWAN 在 LoRa PHY 之上定义网络层：
    应用
 ```
 
+![23.4 LoRa / LoRaWAN：远距离低速率](images/generated/lorawan_network.png)
+
 三种设备类：
 - **Class A**：极低功耗。设备上行后只在两个短窗口接收下行。电池供电传感器。
 - **Class B**：定时窗口接收下行。更低延迟，电池稍贵。
@@ -191,6 +201,8 @@ LoRaWAN 服务在中国、欧洲、北美都有商用网络。
    主 MCU ─── UART/SPI ─── Wi-Fi/BLE 模组 (有自己的固件)
    你的代码                  厂商提供 AT 指令 / SDK
 ```
+
+![23.6 嵌入式无线产品架构两种](images/generated/wireless_product_architectures.png)
 
 例：ESP01 模组 + STM32 主控。学习成本最低、量产周期最短。
 
