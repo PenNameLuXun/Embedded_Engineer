@@ -183,7 +183,7 @@ T_low  (优先级低)  ┘
 最严重案例：火星探路者 Mars Pathfinder 1997 重启事件
 ```
 
-![24.5 优先级反转 (Priority Inversion) 与继承](images/ascii/ascii_02_24_5_priority_inversion_6a3cf195.png)
+![24.5 优先级反转 (Priority Inversion) 与继承](images/generated/priority_inversion_inheritance.png)
 
 **优先级继承**：T_high 阻塞在 M 时，临时把 T_low 提升到 T_high 优先级 → T_med 不能抢 → T_low 跑完释放 M → T_high 拿到 M → T_low 降回原优先级。
 

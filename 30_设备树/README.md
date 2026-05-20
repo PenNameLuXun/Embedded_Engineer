@@ -18,7 +18,7 @@
                                        通过 of_xxx() API 查询
 ```
 
-![30.1 DTS / DTB / DT](images/ascii/ascii_01_30_1_dts_dtb_dt_c391ae59.png)
+![30.1 DTS / DTB / DT](images/generated/dts_dtb_device_tree.png)
 
 **DTS = Device Tree Source**：人可读，类 C 语法  
 **DTB = Device Tree Blob**：二进制，引导加载  

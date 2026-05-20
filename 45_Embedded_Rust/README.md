@@ -44,7 +44,7 @@ C 几十年的"教育"经验告诉我们：**最坏 bug 不是逻辑错，是 me
 └──────────────────────────────────────┘
 ```
 
-![45.2 三层抽象：PAC → HAL → BSP](images/ascii/ascii_01_45_2_pac_hal_bsp_a1eb3128.png)
+![45.2 三层抽象：PAC → HAL → BSP](images/generated/pac_hal_bsp_layers_direct.png)
 
 **PAC** 给你 `peripheral.uart0.dr.write(...)` —— 安全的寄存器访问。  
 **HAL** 给你 `let mut serial = Serial::new(...); serial.write(b"hi")` —— 跨芯片可移植 API。  

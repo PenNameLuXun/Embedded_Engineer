@@ -53,7 +53,7 @@ my_app/
     └── main.c
 ```
 
-![26.3 项目结构](images/ascii/ascii_01_26_3_7740be41.png)
+![26.3 项目结构](images/generated/zephyr_project_structure.png)
 
 ### main.c
 

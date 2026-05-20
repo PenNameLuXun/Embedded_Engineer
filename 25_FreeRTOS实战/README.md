@@ -60,7 +60,7 @@ int main(void) {
                  新 task 跑
 ```
 
-![25.2 核心思路](images/ascii/ascii_01_25_2_a0c3d059.png)
+![25.2 核心思路](images/generated/freertos_core_idea.png)
 
 关键：
 - 每个 task 有独立栈 + TCB
@@ -103,7 +103,7 @@ typedef struct {
 +0x00   R4         ← TCB.sp 指这里
 ```
 
-![25.3 TCB 与栈帧布局](images/ascii/ascii_02_25_3_tcb_a6fccc37.png)
+![25.3 TCB 与栈帧布局](images/generated/tcb_stack_frame.png)
 
 R0–R3、R12、LR、PC、xPSR 是硬件帧；R4–R11 是软件帧（PendSV 自己 push）。
 

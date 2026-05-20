@@ -179,7 +179,7 @@ V4L2、KVM、DRM 都重度用 ioctl。**新内核风格用 fdget 系列把 ioctl
    └── ioctl
 ```
 
-![33.8 怎么选？决策树](images/ascii/ascii_01_33_8_2ed0f3d9.png)
+![33.8 怎么选？决策树](images/generated/user_interface_decision_tree.png)
 
 90% 嵌入式驱动用 **sysfs 配置 + chrdev 数据 + uevent 通知**。
 

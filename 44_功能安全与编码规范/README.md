@@ -77,7 +77,7 @@ Rule 21.3:   不允许 malloc / free
    核心 B ┘                  不一致 → safe state (制动 / 报警)
 ```
 
-![44.4 冗余设计](images/ascii/ascii_01_44_4_0ff8fbba.png)
+![44.4 冗余设计](images/generated/functional_safety_redundancy.png)
 
 汽车 ECU 主流方案。**软件不知道双核存在**，硬件透明。
 

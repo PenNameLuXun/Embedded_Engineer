@@ -36,7 +36,7 @@
 └──────────────────────────────────────────────────────────────┘
 ```
 
-![39.1 七步流程](images/ascii/ascii_01_39_1_d9e7a82b.png)
+![39.1 七步流程](images/generated/fpga_validation_flow_direct.png)
 
 ---
 

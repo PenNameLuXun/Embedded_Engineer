@@ -36,7 +36,7 @@
    MCU 跑推理 + CMSIS-NN 加速算子
 ```
 
-![43.2 工具链全景](images/ascii/ascii_01_43_2_35036c77.png)
+![43.2 工具链全景](images/generated/edge_ai_toolchain_direct.png)
 
 每一步都涉及精度损失 / 模型大小 / 速度的权衡。
 
