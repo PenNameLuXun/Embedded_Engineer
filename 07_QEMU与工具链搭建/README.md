@@ -1,8 +1,8 @@
 # 第 07 章　QEMU 与工具链搭建
 
-> 终于到动手了。这一章把环境装齐，跑一个最小的 "Hello" 程序，让你**亲眼看到字符从 QEMU 模拟的 Cortex-M3 上飞出来**。后面所有 MCU 章节都用这套工具链。
+> 终于到动手了。这一章把环境装齐，跑一个最小的 "Hello" 程序，让你**亲眼看到字符从 QEMU（Quick Emulator，快速仿真器）模拟的 Cortex-M3 上飞出来**。后面所有 MCU（Microcontroller Unit，微控制器单元）章节都用这套工具链。
 >
-> **学完本章你应该能**：(1) 在 Linux / WSL 上装齐 ARM 交叉工具链 + QEMU + GDB，(2) 编译并在 QEMU 上跑通一个最小裸机程序，(3) 用 GDB 远程调试它。
+> **学完本章你应该能**：(1) 在 Linux / WSL 上装齐 ARM 交叉工具链 + QEMU + GDB（GNU Debugger，GNU调试器），(2) 编译并在 QEMU 上跑通一个最小裸机程序，(3) 用 GDB 远程调试它。
 
 ---
 
@@ -17,6 +17,8 @@
 | `qemu-system-arm`          | ARM 模拟器                                | `qemu-system-arm`            |
 | `gdb-multiarch`            | 跨架构 GDB                                | `gdb-multiarch`              |
 | `make`                     | 构建                                      | `build-essential`            |
+
+> **为什么需要"交叉编译器"？** 你的 PC 上运行的 `gcc` 编译出来的程序只能在 x86 PC 上跑。ARM Cortex-M 是另一种 CPU 架构，必须用专门的"交叉编译器"（`arm-none-eabi-gcc`）把 C 代码翻译成 ARM 机器码。`none-eabi` 表示"裸机目标，无操作系统，使用嵌入式 ABI（Application Binary Interface，应用二进制接口）"。
 
 一条命令：
 
@@ -36,8 +38,8 @@ qemu-system-arm --version      # 应有版本号
 gdb-multiarch --version
 ```
 
-> RHEL / Fedora 系：`sudo dnf install arm-none-eabi-gcc-cs qemu-system-arm gdb`  
-> macOS：`brew install --cask gcc-arm-embedded` + `brew install qemu`  
+> RHEL / Fedora 系：`sudo dnf install arm-none-eabi-gcc-cs qemu-system-arm gdb`
+> macOS：`brew install --cask gcc-arm-embedded` + `brew install qemu`
 > Windows：装 WSL2 然后照 Ubuntu 走。
 
 ---
@@ -48,22 +50,24 @@ QEMU 模拟了多个 Cortex-M / Cortex-A 开发板。我们选 **`lm3s6965evb`**
 
 - 内核：Cortex-M3
 - 厂商：Stellaris（TI 收购前的 Luminary Micro）
-- 为什么选它：QEMU 支持最全 + UART/SysTick 都有 + 是经典"教学板"
+- 为什么选它：QEMU 支持最全 + UART（Universal Asynchronous Receiver/Transmitter，通用异步收发传输器）/SysTick（System Tick Timer，系统滴答定时器）都有 + 是经典"教学板"
 - 后续章节也会引入 `mps2-an385`（ARM 自家 Cortex-M3 参考平台）
 
 地址映射（用得着的部分）：
 
 | 区域          | 地址                | 说明                     |
 |---------------|---------------------|--------------------------|
-| Flash         | `0x0000_0000`–`0x0003_FFFF` | 256 KB        |
-| SRAM          | `0x2000_0000`–`0x2000_FFFF` | 64 KB         |
+| Flash（一种非易失性存储器） | `0x0000_0000`–`0x0003_FFFF` | 256 KB |
+| SRAM（Static RAM，静态随机存取存储器） | `0x2000_0000`–`0x2000_FFFF` | 64 KB |
 | UART0         | `0x4000_C000` 起    | PL011 兼容               |
 | SysCtl        | `0x400F_E000` 起    | 时钟使能                 |
-| NVIC          | `0xE000_E100` 起    | Cortex-M3 标准内部        |
+| NVIC（Nested Vectored Interrupt Controller，嵌套向量中断控制器） | `0xE000_E100` 起 | Cortex-M3 标准内部 |
+
+> **为什么这些地址是固定的？** Cortex-M3 的内存空间是统一编址的：Flash、SRAM、外设寄存器都出现在同一个 4 GB 地址空间里。这个规则由 ARM 规范定死，好处是 CPU 访问外设寄存器和访问普通内存用的是同一套指令，非常简洁。
 
 UART0 是 ARM PL011 风格的：
 - 数据寄存器 `UART0_DR`  在 `0x4000_C000 + 0x000`
-- 标志寄存器 `UART0_FR`  在 `0x4000_C000 + 0x018`，bit5 = TXFF（发送 FIFO 满）
+- 标志寄存器 `UART0_FR`  在 `0x4000_C000 + 0x018`，bit5 = TXFF（发送 FIFO（First In First Out，先进先出队列）满）
 
 往 `UART0_DR` 写一个字节就把它发出去。QEMU 上 stdout 直接收。
 
@@ -111,7 +115,9 @@ int main(void)
 }
 ```
 
-注意：QEMU 启动时 UART 已经使能（真实板子还要先打开时钟和 GPIO 复用），所以直接写就能出字。第 10 章我们会从复位开始把整套上电流程过一遍。
+> **为什么要用 `volatile`？** 编译器默认会优化掉它认为"没用到返回值"的内存读写。加了 `volatile`，编译器就知道这个地址是硬件寄存器，每次读写都必须真正去访问，不能被优化掉。嵌入式代码里，所有硬件寄存器的访问都要加 `volatile`。
+
+注意：QEMU 启动时 UART 已经使能（真实板子还要先打开时钟和 GPIO（General Purpose Input/Output，通用输入/输出）复用），所以直接写就能出字。第 10 章我们会从复位开始把整套上电流程过一遍。
 
 ### 启动文件 `startup.s` —— 现在只放最小向量表
 
@@ -197,6 +203,8 @@ clean:
 	rm -f *.o *.elf *.map
 ```
 
+> **关键编译选项说明**：`-mcpu=cortex-m3 -mthumb` 告诉编译器生成 Cortex-M3 的 Thumb（ARM的16位精简指令集）指令；`-nostdlib -ffreestanding` 告诉编译器不要链接标准 C 库，也不要假定有操作系统——这是裸机开发的标配。
+
 ### 跑
 
 ```bash
@@ -225,6 +233,8 @@ make debug
 1. 起 QEMU，加 `-s`（监听 GDB 端口 1234）`-S`（启动时暂停）
 2. 起 gdb-multiarch，自动 `target remote :1234` 连上去
 
+> **为什么叫"远程调试"？** GDB 运行在你的 PC 上，QEMU（模拟的 ARM CPU）是被调试的目标。两者通过 TCP 端口 1234 用 GDB Remote Serial Protocol 通信。真实嵌入式开发中，JTAG（Joint Test Action Group，联合测试行动组，一种调试接口标准）/ SWD（Serial Wire Debug，串行线调试接口）调试器（如 J-Link、ST-Link）扮演的就是 QEMU 这里的角色。
+
 在 gdb 提示符里：
 
 ```
@@ -236,7 +246,7 @@ make debug
 (gdb) info registers
 ```
 
-你会**在源码窗口看着 PC 往下走** —— 这就是嵌入式调试的日常。
+你会**在源码窗口看着 PC（Program Counter，程序计数器）往下走** —— 这就是嵌入式调试的日常。
 
 ---
 

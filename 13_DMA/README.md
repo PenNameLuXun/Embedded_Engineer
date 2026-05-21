@@ -1,6 +1,6 @@
 # 第 13 章　DMA：让 CPU 退居二线
 
-> CPU 把一个字节从 UART 搬到内存要 4–5 条指令；DMA 控制器在硬件层面做同样的事，CPU 一个周期都不花。这一章建立 DMA 心智模型，写一份 UART RX → 内存的最小例子。
+> CPU（Central Processing Unit，中央处理器）把一个字节从 UART（Universal Asynchronous Receiver/Transmitter，通用异步收发传输器）搬到内存要 4–5 条指令；DMA（Direct Memory Access，直接内存访问）控制器在硬件层面做同样的事，CPU 一个周期都不花。这一章建立 DMA 心智模型，写一份 UART RX → 内存的最小例子。
 >
 > **学完本章你应该能**：(1) 解释什么是 DMA、它与 CPU 的"主从"关系，(2) 区分"内存到内存"、"外设到内存"、"内存到外设"三类传输，(3) 知道为什么 DMA 要配合 Cache 同步操作，(4) 配置一个 channel 跑起来。
 
@@ -10,7 +10,7 @@
 
 ## 13.1 心智模型：DMA 是"第二个 CPU"
 
-DMA = **Direct Memory Access** = 一个能自己读 / 写内存和外设的硬件单元，不需要 CPU 帮忙。
+DMA = Direct Memory Access = 一个能自己读 / 写内存和外设的硬件单元，不需要 CPU 帮忙。
 
 类比：
 
@@ -34,6 +34,8 @@ CPU 只在**启动 DMA** 和**收到 DMA 完成中断**时介入。中间几百 
 
 **最大收益**：在高带宽 / 低 CPU 频率场景。比如 1 Mbit/s 串口流式接收，纯 CPU 中断每个字节都要打断 → 利用率爆炸；DMA 每 N 字节才中断一次。
 
+> **打个更具体的比方**：没有 DMA 时，CPU 就像一个人一次搬一块砖，从仓库到工地，搬完一块再搬一块，期间什么别的活也干不了。有了 DMA，相当于雇了一个搬运工（DMAC（DMA Controller，DMA控制器）），你告诉他"把这一堆砖搬过去"，然后你就去做别的事，搬完了他来通知你（DMA 完成中断）。
+
 ---
 
 ## 13.2 三类传输
@@ -47,7 +49,7 @@ CPU 只在**启动 DMA** 和**收到 DMA 完成中断**时介入。中间几百 
 ![13.2 三类传输](images/generated/dma_transfer_types.png)
 
 第 ② / ③ 类需要 **外设触发**：外设说"我现在有 / 要数据了"，DMA 才搬一笔。常见触发源：
-- UART RX 不空、UART TX FIFO 不满
+- UART RX 不空、UART TX FIFO（First In First Out，先进先出队列）不满
 - ADC 转换完成
 - 定时器溢出 / 比较匹配
 - SPI / I²C 收发就绪
@@ -70,8 +72,8 @@ CPU 只在**启动 DMA** 和**收到 DMA 完成中断**时介入。中间几百 
 | Mode                | one-shot / circular / linked-list        |
 
 例：**UART RX → ring buffer**
-- Source = UART_DR 寄存器地址，**不递增**
-- Destination = `&rx_buf[0]`，**递增**
+- Source = UART_DR 寄存器地址，**不递增**（因为每次都从同一个寄存器读）
+- Destination = `&rx_buf[0]`，**递增**（每次写入缓冲区的下一个位置）
 - Width = 1 byte
 - Count = 64
 - Trigger = UART RX FIFO 非空
@@ -85,9 +87,11 @@ CPU 只在**启动 DMA** 和**收到 DMA 完成中断**时介入。中间几百 
 
 **Cortex-M0/M3/M4 没 Cache，本节可跳过**。M7 / Cortex-A 必看。
 
-CPU 写 `buf` → 数据先进 D-Cache → 一段时间后才 flush 到 DRAM。  
-DMA 从 DRAM 读 → 看到的是 **没更新过** 的旧值。  
+CPU 写 `buf` → 数据先进 D-Cache → 一段时间后才 flush 到 DRAM（Dynamic RAM，动态随机存取存储器）。
+DMA 从 DRAM 读 → 看到的是 **没更新过** 的旧值。
 DMA 写到 DRAM → CPU 从 D-Cache 读 → 看到旧值。
+
+> **类比理解 Cache 一致性问题**：想象 CPU 有一个便签本（Cache），DMA 直接访问正式文件柜（DRAM）。CPU 把更新写在便签上还没誊到文件柜里时，DMA 直接去文件柜读，读到的是旧版。反过来，DMA 更新了文件柜，但 CPU 还在看便签上的旧版。这就是"Cache 不一致"。
 
 **解决三套方法**：
 
@@ -97,11 +101,11 @@ DMA 写到 DRAM → CPU 从 D-Cache 读 → 看到旧值。
 - ARM 提供 `SCB_CleanDCache_by_Addr(...)` / `SCB_InvalidateDCache_by_Addr(...)`
 
 #### B. 把 DMA buffer 放在不可缓存区域
-- 通过 MPU 划一段 Normal-Noncacheable
+- 通过 MPU（Memory Protection Unit，内存保护单元）划一段 Normal-Noncacheable
 - 链接脚本把指定 section 放在该区域
 
 #### C. 缓存一致互连 (Cache Coherent Interconnect)
-- 高端 SoC 才有，互连硬件自动维护一致性
+- 高端 SoC（System on Chip，片上系统）才有，互连硬件自动维护一致性
 - Cortex-A + CCI/CMN 互连
 
 裸机最常用 A，安全可控但容易写漏。RTOS 通常封装好 B 给你 attr 标签用。
@@ -118,7 +122,7 @@ LM3S 的 µDMA 有 32 个通道。配置流程（简化）：
 4. 选触发源、使能通道
 5. 等中断 (DMA done) 或轮询
 
-完整代码：`code/06_dma/main.c` —— **注意：QEMU 6.2 对 LM3S µDMA 的模拟不完整**，这段代码主要作为**真实硬件模板**和**寄存器编程练习**，QEMU 上跑不见得有效果。它的价值是给你建立模型，移植到 STM32 / GD32 / 其它 ARM MCU 时改地址就能用。
+完整代码：`code/06_dma/main.c` —— **注意：QEMU 6.2 对 LM3S µDMA 的模拟不完整**，这段代码主要作为**真实硬件模板**和**寄存器编程练习**，QEMU 上跑不见得有效果。它的价值是给你建立模型，移植到 STM32 / GD32 / 其它 ARM MCU（Microcontroller Unit，微控制器单元）时改地址就能用。
 
 为了在 QEMU 上**真正体验 DMA 行为**，我们也提供一个 `mem_to_mem_demo.c`：用结构体模拟描述符的概念，纯软件搬运但走"描述符 + 启动 + 完成回调"的接口模式，让你熟悉那套抽象。
 
@@ -138,6 +142,8 @@ DMA_ENABLE = 1;
 
 没有 `__DSB`，多核 / 高带宽 SoC 上写可能被合并 / 乱序 → DMA 看到的描述符是半成品。第 03 章 §3.8 讨论过。**养成所有 DMA 启动前加 `__DSB` 的肌肉记忆**。
 
+> **DSB（Data Synchronization Barrier，数据同步屏障）** 是一条 ARM 指令，告诉 CPU："在我执行完之前，所有之前的内存写操作必须真正完成并对系统总线可见，不允许乱序"。没有它，CPU 的流水线优化可能让 DMA_ENABLE 比 DMA_SRC 先写出去——DMA 就拿着错误的源地址开始搬数据了。
+
 ---
 
 ## 13.7 进阶模式
@@ -149,7 +155,7 @@ DMA_ENABLE = 1;
 | Linked List / Scatter-gather | 多段不连续内存一次性搬                |
 | Channel chaining             | 一个 channel 完成触发下一个           |
 
-工业级音频 / 摄像头 / Ethernet 几乎全靠这些组合。
+> **Ping-pong（乒乓缓冲）** 是音频 / 视频流处理的经典手法：准备两个缓冲区 A 和 B，DMA 往 A 写数据的同时，CPU 处理 B 里的上一批数据；A 写满了，两者交换角色。这样 DMA 和 CPU 始终"背靠背"工作，没有等待。工业级音频 / 摄像头 / Ethernet 几乎全靠这些组合。
 
 ---
 

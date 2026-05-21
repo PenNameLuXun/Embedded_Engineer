@@ -1,8 +1,8 @@
 # 第 25 章　FreeRTOS 实战：在 QEMU 上跑一个真的可抢占内核
 
-> 上一章建立了 RTOS 的概念词汇。这一章我们 **不抄 FreeRTOS 源码** —— 而是亲手写一个 ~250 行的最小可抢占内核 `mini_rtos`，在 QEMU lm3s6965evb 上跑出三个 task 并行的效果。看懂这 250 行，你就看穿了 FreeRTOS 90% 的精髓；剩下 10% 是各种同步原语和健壮性，最后我们用 FreeRTOS 官方 demo 对比。
+> 上一章建立了 RTOS（Real-Time Operating System，实时操作系统）的概念词汇。这一章我们 **不抄 FreeRTOS（Free Real-Time Operating System，开源实时操作系统）源码** —— 而是亲手写一个 ~250 行的最小可抢占内核 `mini_rtos`，在 QEMU lm3s6965evb 上跑出三个 task 并行的效果。看懂这 250 行，你就看穿了 FreeRTOS 90% 的精髓；剩下 10% 是各种同步原语和健壮性，最后我们用 FreeRTOS 官方 demo 对比。
 >
-> **学完本章你应该能**：(1) 解释 SysTick + PendSV + PSP 怎么协作实现上下文切换，(2) 看懂一份 RTOS 调度器的核心代码，(3) 把这个最小内核扩展加 semaphore / queue，(4) 知道 FreeRTOS 比 mini_rtos 多了哪些工业级特性。
+> **学完本章你应该能**：(1) 解释 SysTick（System Tick Timer，系统滴答定时器）+ PendSV（Pendable SerVice，可挂起服务调用）+ PSP（Process Stack Pointer，进程栈指针）怎么协作实现上下文切换，(2) 看懂一份 RTOS 调度器的核心代码，(3) 把这个最小内核扩展加 semaphore（信号量）/ queue（消息队列），(4) 知道 FreeRTOS 比 mini_rtos 多了哪些工业级特性。
 
 ---
 
@@ -35,7 +35,7 @@ int main(void) {
 }
 ```
 
-要求：**真的抢占** —— 在一个 task 死循环时另一个也能跑。
+要求：**真的抢占** —— 在一个 task 死循环时另一个也能跑。这正是 RTOS 的精髓：多个任务在一颗 CPU（Central Processing Unit，中央处理器）上"同时"运行。
 
 ---
 
@@ -62,10 +62,12 @@ int main(void) {
 
 ![25.2 核心思路](images/generated/freertos_core_idea.png)
 
-关键：
-- 每个 task 有独立栈 + TCB
-- CPU 处于"Thread 模式 + PSP"运行 task 代码
-- 上下文切换发生在 PendSV，把当前 PSP 寄存器组保存到 TCB，加载下一个 TCB 的 PSP 寄存器组
+关键设计决策：
+- 每个 task 有独立栈 + TCB（Task Control Block，任务控制块）——保存任务的"现场"
+- CPU（中央处理器）处于"Thread 模式 + PSP（进程栈指针）"运行 task 代码
+- 上下文切换发生在 PendSV（可挂起服务调用），把当前 PSP 寄存器组保存到 TCB，加载下一个 TCB 的 PSP 寄存器组
+
+为什么用 PendSV 而不是 SysTick 直接做切换？因为 SysTick 优先级高，如果在 SysTick 里直接切换，会阻断其他中断；PendSV 优先级最低，保证所有更重要的 ISR（Interrupt Service Routine，中断服务例程）都处理完后才做切换。
 
 ---
 
@@ -105,7 +107,7 @@ typedef struct {
 
 ![25.3 TCB 与栈帧布局](images/generated/tcb_stack_frame.png)
 
-R0–R3、R12、LR、PC、xPSR 是硬件帧；R4–R11 是软件帧（PendSV 自己 push）。
+R0–R3、R12、LR、PC、xPSR 是硬件帧（异常入口由 CPU 自动 push/pop）；R4–R11 是软件帧（PendSV 自己 push/pop）。伪造这个帧的目的是让 PendSV 恢复流程以为"这个 task 已经被切走过一次了"，从而正确地加载寄存器并跳转到任务入口。
 
 ---
 
@@ -264,7 +266,7 @@ PendSV_Handler:
 
 上面 `start_first_task` 假装"从 PendSV 返回"。完整 + 经过验证的版本在 `code/07_mini_rtos/start_first.s` 里。要点：
 1. 设 PSP = task 栈顶
-2. CONTROL.SPSEL = 1 → 切到 PSP
+2. CONTROL.SPSEL = 1 → 切到 PSP（Process Stack Pointer，进程栈指针）
 3. **手动 pop 软件帧 R4-R11**
 4. **执行异常返回** → 触发硬件自动 pop R0-R3/R12/LR/PC/xPSR
 
@@ -320,9 +322,9 @@ int main(void) {
 ## 25.6 升级方向（练习）
 
 1. 加 priority 字段，把 round-robin 改成"选 ready 中优先级最高的"
-2. 实现二值信号量 `sem_take` / `sem_give_from_isr`
-3. 实现消息队列
-4. 优先级继承
+2. 实现二值信号量（binary semaphore）`sem_take` / `sem_give_from_isr`
+3. 实现消息队列（message queue），支持带数据的任务间通信
+4. 优先级继承（priority inheritance）：防止优先级反转
 
 工程量约 200–500 行，做完你就有自己的 RTOS。
 
@@ -333,7 +335,7 @@ int main(void) {
 1. 创建 task 时为什么 EXC_RETURN 要伪造成 0xFFFFFFFD？
 2. PendSV 优先级为什么要设到最低？
 3. mini_rtos 没处理优先级反转，可能在哪里出问题？
-4. SysTick 频率从 1 kHz 加到 10 kHz，会有什么后果？
+4. SysTick（系统滴答定时器）频率从 1 kHz 加到 10 kHz，会有什么后果？
 
 答案见 `code/answers.md`。
 

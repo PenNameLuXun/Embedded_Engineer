@@ -1,6 +1,6 @@
 # 第 26 章　Zephyr 上手：一个现代 RTOS 长什么样
 
-> FreeRTOS 是经典 RTOS 的代表，Zephyr 则是"现代 RTOS"的代表 —— 它把 Linux 的设计哲学（**设备树 + Kconfig + 子系统化**）搬进了 RTOS 世界。这一章给你 Zephyr 的总体地图，让你看到 RTOS 也能"很大"。
+> FreeRTOS（Free Real-Time Operating System，开源实时操作系统）是经典 RTOS（Real-Time Operating System，实时操作系统）的代表，Zephyr（一个开源的、面向 IoT 设备的实时操作系统）则是"现代 RTOS"的代表 —— 它把 Linux 的设计哲学（**设备树 + Kconfig + 子系统化**）搬进了 RTOS 世界。这一章给你 Zephyr 的总体地图，让你看到 RTOS 也能"很大"。
 >
 > **学完本章你应该能**：(1) 解释 Zephyr 与 FreeRTOS 在设计哲学上的差别，(2) 看懂 Zephyr 项目的目录结构，(3) 知道一个 driver 在 Zephyr 里怎么"接进来"，(4) 在 QEMU 上跑 Zephyr 的 hello_world。
 
@@ -13,14 +13,14 @@
 Zephyr 项目 2016 年由 Linux 基金会启动，目标：**做一个 Apache 2.0 协议的"小型 Linux 风格"RTOS**。今天 Intel、NXP、Nordic、Antmicro 等公司都重度投入。
 
 特征：
-- **设备树 (Device Tree)** 描述硬件 → 编译时生成 C 数据结构
-- **Kconfig** 配置功能 → 与 Linux 内核完全一致的工具链
-- **west** 工具管理多 repo、build、flash、debug —— 自家版 Cargo / Bazel
-- **子系统化**：网络栈、文件系统、USB、BLE、传感器、显示 都是独立 subsystem
-- **POSIX 兼容**子集：能跑很多原本写给 Linux 的代码
-- **arch 抽象**：支持 ARM、RISC-V、x86、ARC、Xtensa、SPARC、POSIX (跑在 Linux 上做测试)
+- **设备树（Device Tree）** 描述硬件 → 编译时生成 C 数据结构（把硬件配置从代码里分离出来，换板子时只改设备树，不改业务代码）
+- **Kconfig** 配置功能 → 与 Linux 内核完全一致的工具链（通过配置文件精确控制哪些功能被编译进去）
+- **west** 工具管理多 repo、build、flash、debug —— 自家版 Cargo / Bazel（一条命令搞定编译、烧录、调试）
+- **子系统化**：网络栈、文件系统、USB、BLE（Bluetooth Low Energy，蓝牙低功耗）、传感器、显示 都是独立 subsystem
+- **POSIX 兼容**子集：能跑很多原本写给 Linux 的代码，降低移植成本
+- **arch 抽象**：支持 ARM、RISC-V、x86、ARC、Xtensa、SPARC、POSIX（跑在 Linux 上做测试）
 
-代价：内核 50+ KB，比 FreeRTOS 大 5–10 倍。**适合中高端 MCU (Cortex-M4 + 256 KB 起)**。
+代价：内核 50+ KB，比 FreeRTOS 大 5–10 倍。**适合中高端 MCU（Microcontroller Unit，微控制器单元）（Cortex-M4 + 256 KB 起）**。如果目标芯片只有 32 KB RAM，FreeRTOS 更合适；有 256 KB 以上 RAM 且需要完整网络/BLE 支持，Zephyr 会更省力。
 
 ---
 
@@ -30,7 +30,7 @@ Zephyr 项目 2016 年由 Linux 基金会启动，目标：**做一个 Apache 2.
 |-------------|--------------------------|-----------------------------------|
 | 内核大小    | 5–10 KB                  | 50+ KB                            |
 | 启动配置    | 头文件宏 + linker         | Kconfig + 设备树                   |
-| 驱动模型    | 自己写 / SDK 各家         | 统一 Device API (`device_get_binding`) |
+| 驱动模型    | 自己写 / SDK 各家         | 统一 Device API（`device_get_binding`） |
 | 网络         | + lwIP                   | 自带 IPv4/6 + 6LoWPAN + Thread     |
 | 文件系统     | 第三方                    | LittleFS / FatFS 集成               |
 | BLE         | 第三方 / SDK              | 自带完整 BLE host + controller     |
@@ -93,7 +93,7 @@ target_sources(app PRIVATE src/main.c)
 
 ## 26.4 设备树：硬件描述与代码解耦
 
-Zephyr 直接借用了 Linux 的设备树语法。每块板有一份 `.dts`：
+Zephyr 直接借用了 Linux 的设备树语法。每块板有一份 `.dts`，描述这块板上有哪些外设、连在哪个地址、用什么中断：
 
 ```dts
 / {
@@ -101,7 +101,7 @@ Zephyr 直接借用了 Linux 的设备树语法。每块板有一份 `.dts`：
     chosen {
         zephyr,console = &uart0;
     };
-    
+
     soc {
         uart0: uart@4000c000 {
             compatible = "ti,stellaris-uart";
@@ -121,7 +121,7 @@ const struct device *uart = DEVICE_DT_GET(DT_NODELABEL(uart0));
 uart_poll_out(uart, 'H');
 ```
 
-驱动代码完全不知道 UART 在 `0x4000C000` —— 一切由设备树决定。**这就是设备树的核心价值：硬件信息从代码中剥离**。
+驱动代码完全不知道 UART 在 `0x4000C000` —— 一切由设备树决定。**这就是设备树的核心价值：硬件信息从代码中剥离**。换一块新的板子，只需要写一个新的设备树文件，驱动和应用代码一行不改，直接重新编译就能用。
 
 第 30 章讲 Linux 设备树时还会回到这。
 
@@ -148,7 +148,7 @@ k_mutex_lock(&my_mutex, K_FOREVER);
 k_mutex_unlock(&my_mutex);
 ```
 
-数据结构尽量编译期定义（`K_*_DEFINE`），避免动态分配。
+数据结构尽量编译期定义（`K_*_DEFINE`），避免动态分配。这是嵌入式编程的好习惯——静态分配不会有运行时分配失败的风险，也没有内存碎片问题。
 
 ---
 
@@ -192,16 +192,16 @@ Hello World! qemu_cortex_m3
 | **logging** | 异步日志，多 backend                |
 | **sensor**  | 统一 sensor API（DHT11 ↔ BMP180 同接口）|
 | **usb**     | USB device stack（CDC/HID/MSC）     |
-| **mgmt**    | OTA、设备管理协议 (MCUmgr)          |
+| **mgmt**    | OTA（Over-The-Air，空中升级）、设备管理协议（MCUmgr）          |
 | **storage** | 流式存储 / 镜像更新                  |
 
-子系统化的好处：换硬件不改业务代码，只改 DT。
+子系统化的好处：换硬件不改业务代码，只改 DT（设备树）。例如把温度传感器从 DHT11 换成 BMP280，只需要在设备树里改 `compatible` 字段，应用层读温度的代码一行不动。
 
 ---
 
 ## 26.8 谁在用 Zephyr 真生产
 
-- **Nordic Semiconductor**：nRF Connect SDK 的内核
+- **Nordic Semiconductor**：nRF Connect SDK 的内核（做 BLE 产品时几乎必用）
 - **NXP**：MCUXpresso for Zephyr
 - **Espressif**：ESP32 在 Zephyr 上的支持
 - **Google**：Pixel Watch 部分组件
@@ -231,4 +231,4 @@ Hello World! qemu_cortex_m3
 | 通用驱动 API     | [32 子系统驱动](../32_子系统驱动模型/)     |
 | BLE host         | [23 无线协议](../23_无线协议入门/) 回顾    |
 
-下一章 [27 实时性深入](../27_实时性深入/) 把"实时"这个词剖开，看 WCET、抖动、可调度性分析。
+下一章 [27 实时性深入](../27_实时性深入/) 把"实时"这个词剖开，看 WCET（Worst-Case Execution Time，最坏情况执行时间）、抖动、可调度性分析。

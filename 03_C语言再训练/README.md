@@ -39,8 +39,8 @@
 ![3.1 一个嵌入式 C 程序的"全景"](images/generated/embedded_c_memory_layout.png)
 
 **关键事实**：
-- `.text` / `.rodata` 放在 **Flash**（不可写，掉电不丢）。
-- `.data` / `.bss` / Stack / Heap 放在 **SRAM**。
+- `.text` / `.rodata` 放在 **Flash**（一种非易失性存储器，掉电不丢数据，但不可随意写）。
+- `.data` / `.bss` / Stack / Heap 放在 **RAM（Random Access Memory，随机存取存储器）** 中的片上 SRAM（Static RAM，静态随机存取存储器）。
 - `.data` 的初值住在 Flash，启动时由启动文件搬到 SRAM。这是为什么"加电后全局变量就是你写的初值"的真正机制。
 - `.bss` 是"未初始化或初始化为 0"的全局，启动时清零。
 
@@ -48,7 +48,7 @@
 
 ---
 
-## 3.2 五种存储期 (Storage Duration)
+## 3.2 五种存储期（Storage Duration）
 
 C 标准把变量按生存期分五类，每类对应上图不同区域：
 
@@ -61,9 +61,9 @@ C 标准把变量按生存期分五类，每类对应上图不同区域：
 | `malloc`                | `p = malloc(64);`             | Heap       | 直到 `free`         |
 
 **嵌入式高频规则**：
-- 尽量用静态分配，少用 heap。MCU 上 heap fragmentation 很难调，FreeRTOS 也常用静态 task 创建。
+- 尽量用静态分配，少用 heap。MCU（Microcontroller Unit，微控制器单元）上 heap fragmentation 很难调，FreeRTOS 也常用静态 task 创建。
 - 大缓冲（>1 KB）放 `static`，别在栈里，避免 stack overflow（栈通常只有几 KB）。
-- 中断处理函数 / 任务函数里不要 `malloc`。
+- ISR（Interrupt Service Routine，中断服务例程）/ 任务函数里不要 `malloc`。
 
 ---
 
@@ -105,7 +105,7 @@ isr_t vector_table[] = {
 };
 ```
 
-中断向量表就是一张函数指针数组。CPU 触发异常时硬件自动从这张表里加载对应槽位的地址跳过去。第 09 章详述。
+中断向量表就是一张函数指针数组。CPU（Central Processing Unit，中央处理器）触发异常时硬件自动从这张表里加载对应槽位的地址跳过去。第 09 章详述。
 
 ---
 
@@ -124,7 +124,7 @@ while ((UART_FR & TXFE) == 0) ;   /* 等 FIFO 空 */
 UART_DR = 'A';
 ```
 
-如果不加 `volatile`，编译器看到循环里 `UART_FR` 不变就把读优化成一次 → 死循环。
+UART（Universal Asynchronous Receiver/Transmitter，通用异步收发传输器）是串口通信的核心外设，FIFO（First In First Out，先进先出队列）是其内部的缓冲队列。如果不加 `volatile`，编译器看到循环里 `UART_FR` 不变就把读优化成一次 → 死循环。
 
 #### ② ISR 和主程序共享的变量
 
@@ -142,7 +142,7 @@ int main(void) {
 
 #### ③ 多核共享内存 / DMA buffer
 
-DMA 写完缓冲，CPU 这边要看到新值。光 `volatile` **不够**，还得加 cache invalidate / memory barrier。但 `volatile` 是必要条件之一。
+DMA（Direct Memory Access，直接内存访问）写完缓冲，CPU 这边要看到新值。光 `volatile` **不够**，还得加 cache invalidate / memory barrier。但 `volatile` 是必要条件之一。
 
 ### `volatile` 不解决什么
 
@@ -210,14 +210,14 @@ struct __attribute__((packed)) frame {
 
 **用途**：解析网络/总线协议头，字段必须严格按规范紧凑。
 
-**风险**：`frame->length` 在 ARMv6-M (Cortex-M0) 上访问非对齐字会 HardFault。在 Cortex-M3+ 上慢一点但能跑。安全做法：
+**风险**：`frame->length` 在 ARMv6-M（Cortex-M0）上访问非对齐字会 HardFault。在 Cortex-M3+ 上慢一点但能跑。安全做法：
 ```c
 uint32_t len;
 memcpy(&len, &f->length, sizeof(len));
 ```
 `memcpy` 编译器会拆成字节访问，肯定不会非对齐。
 
-### 位域 (Bit-field)
+### 位域（Bit-field）
 
 ```c
 struct ctrl_reg {
@@ -307,7 +307,7 @@ DMA_LEN = 100;
 DMA_CTRL = ENABLE;     // ← 必须在前三个之后真的被外设看到
 ```
 
-`volatile` 保证 **编译器不重排这四条**，但**不**保证 CPU / 总线不重排。需要 **内存屏障 (Memory Barrier)**：
+`volatile` 保证 **编译器不重排这四条**，但**不**保证 CPU / 总线不重排。需要 **内存屏障（Memory Barrier）**：
 
 | 指令      | ARM     | 含义                                  |
 |-----------|---------|---------------------------------------|
@@ -322,14 +322,14 @@ __DSB();           // CMSIS 提供的内建
 
 什么时候需要：
 - 启动 DMA 前
-- 修改 NVIC / SCB 寄存器后
+- 修改 NVIC（Nested Vectored Interrupt Controller，嵌套向量中断控制器）/ SCB 寄存器后
 - 跨 CPU 共享数据更新后
 
 第 13 章 DMA、第 27 章实时性深入会反复使用。
 
 ---
 
-## 3.9 别名 (Aliasing) 与 strict-aliasing 规则
+## 3.9 别名（Aliasing）与 strict-aliasing 规则
 
 C99 起，编译器假设 **不同类型的指针不会指向同一对象**（除了 `char*` / `void*`）。这叫严格别名规则，是优化的基础。违反它行为未定义。
 
@@ -389,9 +389,9 @@ make show-volatile    # 输出 -O2 下两个版本的汇编对比
 ## 3.12 自检题
 
 1. 一个 `static const int N = 100;` 在文件作用域里定义，它住在哪里？
-2. 下面哪些一定是原子的？  
-   (a) `*(uint32_t *)0x2000_0000 = 0;`  
-   (b) `*(uint64_t *)0x2000_0000 = 0;` （在 Cortex-M3 上）  
+2. 下面哪些一定是原子的？
+   (a) `*(uint32_t *)0x2000_0000 = 0;`
+   (b) `*(uint64_t *)0x2000_0000 = 0;` （在 Cortex-M3 上）
    (c) `g_counter++;`（`g_counter` 是 `uint32_t`）
 3. 为什么 `volatile int *p` 和 `int * volatile p` 不一样？
 4. 一个 `struct { uint8_t a; uint16_t b; uint8_t c; }` 在默认对齐下 `sizeof` 是多少？怎么调整字段顺序能更紧？

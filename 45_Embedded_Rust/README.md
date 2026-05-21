@@ -1,6 +1,6 @@
 # 第 45 章　Embedded Rust：嵌入式的未来
 
-> Linux 内核引入 Rust 是 2022 年的大事。嵌入式领域 Rust 也在快速崛起：所有权系统在编译期就消灭一类内存安全 bug。这一章给你 Embedded Rust 的入口 + 第一个能跑的例子。
+> Linux 内核引入 Rust 是 2022 年的大事。嵌入式领域 **Rust（一门强调内存安全和并发安全的系统编程语言，由 Mozilla 研发）** 也在快速崛起：所有权系统在编译期就消灭一类内存安全 bug。这一章给你 Embedded Rust 的入口 + 第一个能跑的例子。
 >
 > **学完本章你应该能**：(1) 解释为什么 Rust 适合嵌入式，(2) 知道 `no_std` + HAL + PAC 的分层，(3) 看懂一段 embedded Rust 代码，(4) 在 QEMU 上跑出第一个 Rust 嵌入式 Hello。
 
@@ -9,6 +9,16 @@
 ![Embedded_Rust配图](images/rust_layers.png)
 
 ## 45.1 为什么是 Rust
+
+> **Rust 相比 C 在嵌入式场景的具体优势**
+>
+> 嵌入式 C 代码最常见的严重 bug 类型：悬空指针（use-after-free）、缓冲区溢出、数据竞争、未初始化内存读取。这些 bug 在 C 中只有运行时才暴露，往往造成随机崩溃或安全漏洞，而且极难复现。
+>
+> Rust 的核心机制在**编译期**就消除了这一整类 bug：
+> - **所有权（ownership）**：Rust 的核心机制，每个值只有一个所有者，离开作用域自动释放。编译器知道每块内存的精确生命周期，不需要 GC 也不会有内存泄漏。
+> - **借用检查器（borrow checker）**：Rust 编译器中检查内存安全的静态分析组件。它确保：同时不会有多个可变引用（防数据竞争），也不会有引用在被引用的数据释放后继续存在（防悬空指针）。
+>
+> 对嵌入式来说，这意味着：**那些在 ASIL-D 认证中需要大量测试和文档证明"不存在"的 bug，在 Rust 里编译器直接拒绝编译**。
 
 Rust 在嵌入式吸引人的核心特性：
 
@@ -46,8 +56,10 @@ C 几十年的"教育"经验告诉我们：**最坏 bug 不是逻辑错，是 me
 
 ![45.2 三层抽象：PAC → HAL → BSP](images/generated/pac_hal_bsp_layers_direct.png)
 
-**PAC** 给你 `peripheral.uart0.dr.write(...)` —— 安全的寄存器访问。  
-**HAL** 给你 `let mut serial = Serial::new(...); serial.write(b"hi")` —— 跨芯片可移植 API。  
+**PAC（Peripheral Access Crate，外设访问库，由 SVD 文件自动生成的类型安全寄存器访问）** 给你 `peripheral.uart0.dr.write(...)` —— 安全的寄存器访问。每个寄存器字段都有对应的类型，写入非法值会在编译期报错，而不是在运行时产生难以追查的硬件异常。
+
+**HAL（Hardware Abstraction Layer，硬件抽象层）** 给你 `let mut serial = Serial::new(...); serial.write(b"hi")` —— 跨芯片可移植 API。通过 `embedded-hal` 定义的标准 trait，同一份应用代码可以在不同厂家的 MCU 上编译运行。
+
 **BSP** 给你 `let button = pins.button.into_pull_up_input();` —— 按板子布线封装。
 
 ---
@@ -116,7 +128,9 @@ cargo run
 Hello from embedded Rust!
 ```
 
-`#![no_std]` = 不用 libstd（无 OS）；`#![no_main]` = 不用普通 main；`#[entry]` 替代 C 的 main。
+**`#![no_std]`（告知编译器不链接标准库，用于裸机/RTOS 环境）** = 不用 libstd（无 OS）；`#![no_main]` = 不用普通 main；`#[entry]` 替代 C 的 main。
+
+`no_std` 环境下仍可以使用 `core` 库（Rust 标准库的子集，不依赖操作系统），包括基本的数学运算、字符串处理、迭代器等。
 
 ---
 
@@ -189,7 +203,7 @@ embedded-hal trait 大量用了这套模式。
 
 ## 45.6 RTIC：Rust 的"轻量级 RTOS"
 
-RTIC (Real-Time Interrupt-driven Concurrency) 把任务、共享资源、调度全部用 Rust 宏在编译期生成：
+**RTIC（Real-Time Interrupt-driven Concurrency，实时中断驱动并发框架）** 把任务、共享资源、调度全部用 Rust 宏在编译期生成：
 
 ```rust
 #[rtic::app(device = stm32f4xx_hal::pac, peripherals = true)]
@@ -221,7 +235,7 @@ mod app {
 
 ## 45.7 Embassy：异步 + Future 在嵌入式
 
-Embassy 把 Rust 的 async/await 搬到嵌入式：
+**Embassy（Rust 嵌入式异步运行时，支持 async/await）** 把 Rust 的 async/await 搬到嵌入式：
 
 ```rust
 #[embassy_executor::task]

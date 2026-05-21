@@ -2,7 +2,7 @@
 
 > 学协议章之前必须有的硬技能：**读时序图**。所有数据手册里"这个外设怎么工作"那一节，描述的都是引脚电平在时间轴上怎么动 —— 而不是 C 代码。这一章给你一套读图方法。
 >
-> **学完本章你应该能**：(1) 看一眼时序图就分辨同步 vs 异步、谁是主、信号谁先动，(2) 找到关键时序参数 (t_su / t_h / t_valid)，(3) 知道为什么"建立保持"在协议层和电路层是同一回事。
+> **学完本章你应该能**：(1) 看一眼时序图就分辨同步 vs 异步、谁是主、信号谁先动，(2) 找到关键时序参数（t_su / t_h / t_valid），(3) 知道为什么"建立保持"在协议层和电路层是同一回事。
 
 ---
 
@@ -12,14 +12,14 @@
 
 ```
    clk    ──╱──╲___╱──╲___╱──╲___╱──╲___
-                  
+
    addr   ════<  A0  ><  A1  ><  A2  >═══   ← 总线/向量信号
-                  
+
    we     ────────┌─────────────┐──────    ← 单 bit 控制
                   │             │
-                  
+
    data   ════════<   D0   >══<   D1  >═     ← 主或从轮流驱动
-                  
+
                   ↑                ↑
                   setup time       hold
 ```
@@ -31,8 +31,8 @@
 | 直线 0 / 1    | 信号稳定在低 / 高                                |
 | 斜线          | 沿（上升或下降）                                |
 | 两条平行线    | 多 bit 总线，中间写值                            |
-| 阴影 / 双 X   | 信号不确定 (don't care) 或处于过渡               |
-| 高阻 (Z)      | 没人驱动，悬空                                   |
+| 阴影 / 双 X   | 信号不确定（don't care）或处于过渡               |
+| 高阻（Z）      | 没人驱动，悬空                                   |
 | 虚线          | 第三方驱动（如从设备拉走数据线）                |
 
 ### 读图三步
@@ -48,13 +48,13 @@
 ### 同步总线
 所有动作对齐共同时钟。
 
-代表：SPI、I²S、SDRAM、AXI、AHB、APB。  
+代表：SPI（Serial Peripheral Interface，串行外设接口）、I²S、SDRAM、AXI（Advanced eXtensible Interface，高级可扩展接口）、AHB、APB。
 时序图里会有一条主时钟线，信号都"踩"在它的边沿上。
 
 ### 异步总线
 没有共同时钟，靠**事件边沿** + **超时** + **握手**。
 
-代表：UART（按预约的波特率自计时）、CAN（一帧内自同步）、I²C（SCL 由主拉，SDA 跟随）。  
+代表：UART（Universal Asynchronous Receiver/Transmitter，通用异步收发传输器）（按预约的波特率自计时）、CAN（Controller Area Network，控制器局域网）（一帧内自同步）、I²C（Inter-Integrated Circuit，集成电路互联总线）（SCL 由主拉，SDA 跟随）。
 时序图里没有上层 clk，看到的是协议自己的时序参数（位时间、保持时间）。
 
 ### 半同步 / 源同步
@@ -63,16 +63,16 @@
 
 ---
 
-## 6.3 握手 (Handshake) 协议
+## 6.3 握手（Handshake）协议
 
 跨时钟域 / 流量控制时不可少。最常见两线握手：
 
 ### REQ/ACK 四相握手
 
 ```
-   req   ─────┌─────────┐──────────  
+   req   ─────┌─────────┐──────────
               │         │
-              │         │
+
    ack   ───────┌────┐──────────────
                 │    │
    状态:  idle | req | accept | drop_req | drop_ack | idle
@@ -102,7 +102,7 @@
 
 ![6.3 握手 (Handshake) 协议](images/generated/valid_ready_handshake_direct.png)
 
-**核心规则**：握手只在 `valid && ready` **同时** 为高的那一拍发生。  
+**核心规则**：握手只在 `valid && ready` **同时** 为高的那一拍发生。
 **约束**：`valid` 一旦拉高，**不能在 `ready` 来之前撤**（避免数据丢失）。
 
 这是 AXI / AXIS / 大多数现代片上总线的标准姿势。第 37 章会大用特用。
@@ -122,6 +122,8 @@
             ↑
             slave 在 nCS 拉低后 t_d 内驱动 MISO
 ```
+
+SCK 是 SPI 的时钟线；MOSI（Master Out Slave In）是主机发送数据线；MISO（Master In Slave Out）是主机接收数据线；nCS（片选，低有效）用于标识事务的开始与结束。
 
 ![6.4 一个典型芯片手册里的 SPI 时序图（口头剖析）](images/generated/spi_datasheet_timing.png)
 
@@ -166,8 +168,8 @@ DDR、PCIe、AXI 都用 burst。Burst 越长，握手开销摊得越薄。但 bu
 
 发现没有？
 
-- 数字电路层 (第 05 章)：FF 的 D 在 clk 边沿前要稳 `T_setup`。
-- 协议层 (本章)：MOSI 在 SCK 采样沿前要稳 `t_setup_DI`。
+- 数字电路层（第 05 章）：FF（Flip-Flop，触发器）的 D 在 clk 边沿前要稳 `T_setup`。
+- 协议层（本章）：MOSI 在 SCK 采样沿前要稳 `t_setup_DI`。
 
 这是同一件事 —— 接收端最终就是用一个 FF 在时钟边沿采输入。所有"协议时序"都可以追溯到底层 FF 的 setup/hold。
 
@@ -196,7 +198,7 @@ gtkwave spi_master.vcd    # GUI 看波形
 ## 6.8 本章小结
 
 - 时序图三件事：找主时钟、辨主从、量 setup/hold。
-- 同步（带 clk） vs 异步（自计时） vs 源同步（带数据走的 clk）。
+- 同步（带 clk）vs 异步（自计时）vs 源同步（带数据走的 clk）。
 - 握手三种主流：REQ/ACK 四相、toggle 两相、VALID/READY。
 - Burst 摊薄握手开销。
 - 协议层 setup/hold = 底层 FF setup/hold。看图就是找出"谁的时钟、谁的数据"。

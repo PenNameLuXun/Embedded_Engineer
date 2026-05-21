@@ -4,11 +4,16 @@
 >
 > **学完本章你应该能**：(1) 解释为什么 MCU 跑 AI 必须量化，(2) 知道 TFLite Micro 工作流，(3) 看到边缘 NPU / DSP 知道它的角色，(4) 评估"我的 MCU 能跑多大模型"。
 
+> **为什么不直接用云端 AI？**
+> 云端 AI 需要把传感器数据上传到服务器，服务器推理后返回结果。这在以下场景行不通：(1) **时延**：工业振动异常检测需要毫秒级响应，来回网络往返需要数百毫秒；(2) **隐私**：麦克风音频、摄像头图像等敏感数据不适合持续上传；(3) **功耗与成本**：持续联网会大幅增加功耗和流量费用；(4) **离线可靠性**：网络断开时设备必须继续工作。因此，把 AI 推理放在设备本地（即"边缘"）是这些场景的唯一选择。
+
 ---
 
 ![边缘AI配图](images/edge_ai_workflow.png)
 
 ## 43.1 为什么 MCU 不直接跑普通 TF / PyTorch
+
+**AI（Artificial Intelligence，人工智能）** 和 **ML（Machine Learning，机器学习）** 的主流框架（PyTorch、TensorFlow）是为服务器 GPU 设计的，与 MCU 的约束差距悬殊：
 
 | 维度       | PyTorch 模型              | MCU 实际             |
 |------------|---------------------------|----------------------|
@@ -19,6 +24,10 @@
 | 部署        | python / cuda              | C99 + Cortex-M       |
 
 直接搬不可能。必须**专门为 MCU 设计的推理引擎**。
+
+**NN（Neural Network，神经网络）** 的常见子类型：**CNN（Convolutional Neural Network，卷积神经网络）** 擅长图像识别，**RNN（Recurrent Neural Network，循环神经网络）** 擅长时序数据（如语音、传感器流）。MCU 上最常部署的是轻量化 CNN。
+
+**MCUNet（专为 MCU 设计的轻量级神经网络框架，由 MIT 开发）** 是针对极度受限 MCU 的专用解决方案，通过联合优化网络结构和推理引擎，使千元以下 MCU 也能跑图像分类。
 
 ---
 
@@ -38,6 +47,8 @@
 
 ![43.2 工具链全景](images/generated/edge_ai_toolchain_direct.png)
 
+**TFLite（TensorFlow Lite，TensorFlow 的轻量级推理框架）** 是 Google 专为边缘设备设计的推理框架，其 Micro 版本专为无操作系统的 MCU 裁剪。**ONNX（Open Neural Network Exchange，开放神经网络交换格式）** 是另一种常见的模型交换格式，允许在不同框架之间迁移模型。
+
 每一步都涉及精度损失 / 模型大小 / 速度的权衡。
 
 ---
@@ -53,9 +64,9 @@
 推理时：       q × scale = -1.23
 ```
 
-**优势**：
+**INT8 量化（将浮点权重转换为 8 位整数，大幅减小模型大小和计算量）** 的优势：
 - 体积 1/4
-- int8 MAC 比 fp32 快 ~4× 
+- int8 MAC 比 fp32 快 ~4×
 - DSP / NPU 普遍硬件支持 int8 / int4
 
 **代价**：
@@ -99,7 +110,7 @@ void run(void) {
 
 ## 43.5 CMSIS-NN：ARM 的算子库
 
-CMSIS-NN 给 Cortex-M 实现了优化的：
+**CMSIS-NN（Cortex Microcontroller Software Interface Standard for Neural Networks，ARM 为神经网络推理优化的软件库）** 给 Cortex-M 实现了优化的：
 
 | 算子              | Cortex-M4 加速比 |
 |-------------------|------------------|
@@ -109,7 +120,7 @@ CMSIS-NN 给 Cortex-M 实现了优化的：
 | Pooling           | 2×                |
 | Softmax / ReLU    | 1-2×              |
 
-利用了 Cortex-M4 / M7 / M55 的 SIMD 指令 (DSP 扩展) 和 Helium (M55/M85 向量扩展)。
+利用了 Cortex-M4 / M7 / M55 的 SIMD 指令（**DSP（Digital Signal Processor，数字信号处理器）** 扩展）和 Helium（M55/M85 向量扩展）。这里 DSP 扩展指的是 ARM Cortex-M 系列内置的 SIMD 指令集，不是独立的 DSP 芯片。
 
 TFLite Micro 自动调用 CMSIS-NN 加速版算子。
 
@@ -131,7 +142,7 @@ TFLite Micro 自动调用 CMSIS-NN 加速版算子。
 
 ## 43.7 边缘 NPU / DSP
 
-高端 MCU / 应用 SoC 集成专用 AI 加速器：
+高端 MCU / 应用 SoC 集成专用 AI 加速器：**NPU（Neural Processing Unit，神经网络处理器）** 专为矩阵乘加运算设计，能效比通用 CPU 高 10-100 倍。
 
 | 厂商             | 加速器           | TOPS     |
 |------------------|------------------|----------|
@@ -142,6 +153,8 @@ TFLite Micro 自动调用 CMSIS-NN 加速版算子。
 | Tesla Dojo       | 数据中心 AI       | huge     |
 
 TFLite 自动把支持的算子 offload 到 NPU，剩下 CPU 跑。
+
+TOPS（Tera Operations Per Second，每秒万亿次操作）是 AI 加速器的算力单位，描述每秒能完成多少次整数乘加操作。
 
 ---
 

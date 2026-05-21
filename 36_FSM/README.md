@@ -1,12 +1,27 @@
 # 第 36 章　可综合 Verilog 与 FSM
 
-> 第 01 章我们说过"任何复杂数字电路 = 组合逻辑 + 触发器 = FSM"。这一章你**真的写一个 FSM** 并理解什么是"可综合"。我们做一个简化的 UART 接收机的状态机作为例子。
+> 第 01 章我们说过"任何复杂数字电路 = 组合逻辑 + 触发器 = FSM（Finite State Machine，有限状态机）"。FSM 是数字电路设计的核心思想——它将一个复杂的控制逻辑拆解为有限个"状态"，以及状态之间的"转移条件"和"输出动作"。这和软件中的状态机概念完全一致，只是硬件 FSM 最终会被综合成真实的触发器（FF）和组合逻辑门。这一章你**真的写一个 FSM** 并理解什么是"可综合"。我们做一个简化的 UART（Universal Asynchronous Receiver/Transmitter，通用异步收发传输器）接收机的状态机作为例子。
 >
 > **学完本章你应该能**：(1) 写 Moore / Mealy 两风格的 FSM，(2) 严格遵守可综合规则，(3) 用三段式 FSM 模板（推荐写法）写一个 UART RX，(4) 解释为什么综合工具喜欢三段式。
 
 ---
 
 ![FSM配图](images/uart_rx_fsm.png)
+
+## 36.0 为什么硬件喜欢用 FSM？
+
+**类比软件**：在软件中，我们经常用状态机管理协议解析、UI 流程或通信控制——比如 TCP 连接的 ESTABLISHED/CLOSE_WAIT/TIME_WAIT 状态。硬件 FSM 和这完全一样，只是"执行者"从 CPU 变成了电路本身。
+
+**硬件偏爱 FSM 的原因**：
+1. **可综合**：FSM 的状态用触发器（FF）存储，转移逻辑用组合门实现，综合工具能直接映射到 FPGA 的 LUT（Look-Up Table，查找表，FPGA 的基本逻辑单元）和 FF 上
+2. **时序确定**：每个时钟沿精确地推进一个状态，符合同步数字电路的设计规范
+3. **覆盖完备**：`case` 语句穷举所有状态，加 `default` 处理异常，避免综合出意外的锁存器（latch）
+
+**Moore 机 vs Mealy 机**：
+- Moore机（输出只依赖于当前状态的 FSM）：输出仅由当前状态决定，稳定、无毛刺，推荐新人使用
+- Mealy机（输出依赖于当前状态和输入的 FSM）：输出由当前状态和输入共同决定，响应更快但可能产生组合毛刺
+
+---
 
 ## 36.1 FSM 三段式写法
 
@@ -41,9 +56,9 @@ end
 ```
 
 **为什么三段式？**
-- 状态寄存器单独一段 → 综合工具明确"这是 FF"
+- 状态寄存器单独一段 → 综合工具明确"这是 FF（触发器）"
 - 转移单独一段 → 易读、易改，case 完整覆盖
-- 输出单独一段 → Moore vs Mealy 一目了然
+- 输出单独一段 → Moore 机 vs Mealy 机一目了然
 
 新人易犯错：把上面三段揉成一段，或在时序段里写 case。综合的"长 case + 多嵌套"是热点 bug 来源。
 
@@ -73,8 +88,8 @@ reg [2:0] state, next_state;
 
 **编码风格选择**：
 - **Binary**：状态最少触发器，逻辑稍复杂
-- **One-hot**：每状态一根 FF，逻辑简单但触发器多。FPGA 常用（FF 富裕）
-- **Gray**：相邻状态只差 1 位，跨时钟域穿越友好
+- **One-hot**：每状态一根 FF（触发器），逻辑简单但触发器多。FPGA 常用（FF 富裕）
+- **Gray**：相邻状态只差 1 位，CDC（Clock Domain Crossing，跨时钟域问题）穿越友好。当一个信号从一个时钟域传递到另一个时钟域时，若多位同时翻转可能被对方时钟误采，Gray 编码每次只变一位，降低了亚稳态风险
 
 新人**默认 binary**；综合工具一般能自动选择最佳。
 
@@ -82,7 +97,7 @@ reg [2:0] state, next_state;
 
 ## 36.3 完整示例：UART RX FSM
 
-简化版 8N1，假设 baud_tick (= 16× baud) 信号已提供：
+简化版 8N1（8 个数据位、无校验、1 个停止位的 UART 格式），假设 baud_tick (= 16× baud) 信号已提供：
 
 ```verilog
 module uart_rx_fsm (
@@ -163,7 +178,7 @@ endmodule
 
 约 60 行 = 一个能跑的 UART 接收。综合到 Xilinx XC7A35T 大约 40 LUT + 25 FF。
 
-`code/uart_rx_fsm.v` + testbench `tb_uart_rx.v` 可仿真。
+`code/uart_rx_fsm.v` + testbench（测试台）`tb_uart_rx.v` 可仿真。
 
 ---
 
@@ -186,7 +201,7 @@ endmodule
 
 ## 36.5 跨时钟域的"标准动作"
 
-第 05 章讲过同步器。可综合的两级 FF：
+第 05 章讲过同步器。CDC（Clock Domain Crossing，跨时钟域问题）是数字设计中的常见挑战：当一个信号从时钟域 A 传递到时钟域 B 时，若不加处理，可能因亚稳态导致数据错误。标准解决方案是两级 FF 同步器：
 
 ```verilog
 reg [1:0] sync_ff;
@@ -197,7 +212,7 @@ end
 wire synced = sync_ff[1];
 ```
 
-**重点**：综合工具要知道 `async_signal_from_clk_a` 是 CDC 信号 → 加 SDC 约束 `set_false_path`。这是后端时序收敛的事，但 RTL 编码就要预留。
+**重点**：综合工具要知道 `async_signal_from_clk_a` 是 CDC 信号 → 加 SDC 约束 `set_false_path`。这是后端时序收敛（Timing Closure，保证所有信号在时钟约束内建立/保持时间满足）的事，但 RTL 编码就要预留。
 
 ---
 
@@ -208,7 +223,9 @@ wire synced = sync_ff[1];
 - **FSM 覆盖率**：每个状态、每条转移都触发过没
 - **断言覆盖率**：assertion 触发了几次
 
-商用工具：Synopsys VCS、Cadence Xcelium、Siemens QuestaSim。开源：iverilog（基础）、Verilator（高速）。Verilator 把 Verilog 编成 C++，仿真速度比 iverilog 快 100×，业界开源主流。
+商用工具：Synopsys VCS、Cadence Xcelium、Siemens QuestaSim。开源工具：
+- Icarus Verilog（iverilog，开源 Verilog 仿真器）：轻量，适合入门和小规模验证
+- Verilator（一个将 Verilog/SystemVerilog 编译为 C++ 仿真模型的开源工具）：把 Verilog 编成 C++，仿真速度比 iverilog 快 100×，业界开源主流，适合大规模回归测试
 
 ---
 

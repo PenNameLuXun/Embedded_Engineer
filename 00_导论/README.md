@@ -8,12 +8,12 @@
 
 ## 0.1 一个简单的定义和一个更准的定义
 
-**简单定义**：嵌入式系统 = 把计算机塞进一个"看上去不是计算机"的设备里，用来完成特定任务。  
-路由器、洗衣机、汽车 ECU、心率手环、SSD 控制器、PLC、摄像头主控芯片，全是嵌入式。
+**简单定义**：嵌入式系统 = 把计算机塞进一个"看上去不是计算机"的设备里，用来完成特定任务。
+路由器、洗衣机、汽车 ECU（Electronic Control Unit，电子控制单元）、心率手环、SSD 控制器、PLC（Programmable Logic Controller，可编程逻辑控制器）、摄像头主控芯片，全是嵌入式。
 
 **更准的定义**：嵌入式系统是 **被资源、实时性、可靠性约束** 的专用计算系统。
 - **资源约束**：内存可能只有几十 KB，主频几十 MHz，电池要撑一年。
-- **实时性约束**：电机控制环路必须 10 µs 内闭环；CAN 报文晚 1 ms 就丢车祸。
+- **实时性约束**：电机控制环路必须 10 µs 内闭环；CAN（Controller Area Network，控制器局域网）报文晚 1 ms 就丢车祸。
 - **可靠性约束**：心脏起搏器 24×365 跑十年不能重启；汽车刹车 ECU 跑十亿次不能 segfault。
 
 这三条约束就是为什么"在嵌入式里 `malloc` 是有罪推定"、"为什么要看汇编"、"为什么 `volatile` 突然变重要"的根源。
@@ -58,9 +58,9 @@
 
 ![0.3 嵌入式系统的硬件层次](images/generated/hardware_layers_direct.png)
 
-- **板级**：你做项目时画原理图、Layout、焊电阻的层次。本教材基本跳过（QEMU 没法仿 PCB），但 04、05、06 会讲必要的物理基础。
-- **芯片 / SoC**：System-on-Chip，一颗芯片里集成了 CPU + 内存 + 一堆外设。今天的 MCU、手机主芯片都是 SoC。
-- **IP 核**：芯片内部由许多"积木"组成，每块积木叫 IP（Intellectual Property）。一个 UART 控制器就是一个 IP，DMA 控制器是另一个。芯片公司从 ARM / SiFive 买 CPU IP，从其它 IP 厂商买 USB IP，再自己加点料，拼成一颗 SoC。
+- **板级**：PCB（Printed Circuit Board，印刷电路板）是承载所有芯片和元器件的基板。你做项目时画原理图、Layout、焊电阻的层次。本教材基本跳过（QEMU 没法仿 PCB），但 04、05、06 会讲必要的物理基础。
+- **芯片 / SoC**：SoC（System on Chip，片上系统），一颗芯片里集成了 CPU（Central Processing Unit，中央处理器）+ 内存 + 一堆外设。今天的 MCU（Microcontroller Unit，微控制器单元）、手机主芯片都是 SoC。可以把 SoC 理解为"一整台计算机塞进了一颗芯片"。
+- **IP 核**：IP核（Intellectual Property Core，知识产权核，即可复用的硬件模块）。芯片内部由许多"积木"组成，每块积木叫 IP。一个 UART（Universal Asynchronous Receiver/Transmitter，通用异步收发传输器）控制器就是一个 IP，DMA（Direct Memory Access，直接内存访问）控制器是另一个。芯片公司从 ARM / SiFive 买 CPU IP，从其它 IP 厂商买 USB IP，再自己加点料，拼成一颗 SoC。
 - **门电路层**：再往下就是数字逻辑，第 01、05、35–39 章会进入这一层。
 
 **理解 IP 这个词非常关键**。本教材第 3 部分整章节讲的就是各种 IP 的内部结构 —— 不是教你"用 STM32 的库调一个 UART"，而是教你"如果让你自己设计一个 UART 控制器，里面应该有什么"。
@@ -72,26 +72,26 @@
 软件方向上从最 raw 到最高级，大致是四种形态：
 
 ### ① 裸机（Bare-metal）
-没有操作系统。一个 `main()` 函数 + 一堆中断处理函数 + 你自己拼的状态机。  
-特点：极致可控，资源占用最小。  
-典型场景：8/16 位单片机、电机驱动、低端 IoT 节点。  
+没有操作系统。一个 `main()` 函数 + 一堆中断处理函数 + 你自己拼的状态机。
+特点：极致可控，资源占用最小。
+典型场景：8/16 位单片机、电机驱动、低端 IoT 节点。
 **这是第 2 部分的核心**。
 
-### ② RTOS（实时操作系统）
-有一个非常小的内核（几十 KB），提供任务、调度、信号量、消息队列。  
-特点：你能写多个"线程"（叫 Task），又能保证响应时间。  
-典型场景：汽车 ECU、工业控制器、复杂传感器节点。代表：FreeRTOS、Zephyr、ThreadX、RT-Thread。  
+### ② RTOS（Real-Time Operating System，实时操作系统）
+有一个非常小的内核（几十 KB），提供任务、调度、信号量、消息队列。
+特点：你能写多个"线程"（叫 Task），又能保证响应时间。RTOS 比完整的 OS（Operating System，操作系统）小得多，专为实时响应设计。
+典型场景：汽车 ECU、工业控制器、复杂传感器节点。代表：FreeRTOS、Zephyr、ThreadX、RT-Thread。
 **第 4 部分**。
 
 ### ③ 嵌入式 Linux
-完整的 Linux 内核 + 精简的用户态。要求至少 MB 级 RAM、有 MMU 的 CPU（Cortex-A、x86、64 位 RISC-V）。  
-特点：可以跑网络协议栈、文件系统、Python，但不能保证微秒级实时。  
-典型场景：路由器、IP 摄像头、车载信息娱乐、边缘网关。  
+完整的 Linux 内核 + 精简的用户态。要求至少 MB 级 RAM、有 MMU（Memory Management Unit，内存管理单元）的 CPU（Cortex-A、x86、64 位 RISC-V）。MMU 是 CPU 中负责虚拟地址到物理地址转换的硬件模块，没有它就无法运行 Linux。
+特点：可以跑网络协议栈、文件系统、Python，但不能保证微秒级实时。
+典型场景：路由器、IP 摄像头、车载信息娱乐、边缘网关。
 **第 5 部分**。
 
 ### ④ Hypervisor / 异构多核
-高端 SoC 里同时跑 Linux（Cortex-A）+ RTOS（Cortex-R/M），靠 hypervisor 或核间通信协作。  
-典型场景：汽车域控制器、5G 基站。  
+高端 SoC 里同时跑 Linux（Cortex-A）+ RTOS（Cortex-R/M），靠 hypervisor 或核间通信协作。
+典型场景：汽车域控制器、5G 基站。
 本教材在第 38、40 章里会顺带提到。
 
 **选哪种取决于约束**：要硬实时 → 裸机或 RTOS；要跑 Web 服务/AI → Linux；两个都要 → 异构。
@@ -105,10 +105,10 @@
 | 架构        | 谁家           | 代表内核             | 在嵌入式里的地位                  |
 |-------------|----------------|----------------------|-----------------------------------|
 | **ARM**     | Arm Holdings   | Cortex-M0/M3/M4/M7/M33（MCU）、Cortex-A53/A72（应用） | 现在的事实标准，覆盖从灯泡到手机 |
-| **RISC-V**  | 开源 ISA       | SiFive E31、CH32V、BL602  | 新势力，开源，国产化首选，未来 10 年大势 |
+| **RISC-V**  | 开源 ISA（Instruction Set Architecture，指令集架构）       | SiFive E31、CH32V、BL602  | 新势力，开源，国产化首选，未来 10 年大势 |
 | **8051 / AVR / PIC** | 多家  | Intel 8051、Atmel AVR | 上一代的霸主，今天还在低端市场和教学领域顽强存在 |
 
-本教材的全部 MCU 实例都跑在 **ARM Cortex-M** 和 **RISC-V** 上，前者代表"现在"，后者代表"未来"。  
+本教材的全部 MCU 实例都跑在 **ARM Cortex-M** 和 **RISC-V** 上，前者代表"现在"，后者代表"未来"。
 QEMU 对两家都有非常成熟的支持。
 
 你可能听过 **x86**：在嵌入式里只在一些工业 PC、车载主机里出现，比例小，本教材不专门讲。
@@ -125,9 +125,9 @@ QEMU 对两家都有非常成熟的支持。
 | 协处理器：Cortex-M 跑 RTOS 管电源 | 第 2、4 部分          |
 | Wi-Fi/BLE 模组（带自己的 MCU）    | 第 23 章              |
 | 4G 模组（AT 指令通信）           | 第 15 章 UART          |
-| Flash（QSPI 接口）               | 第 16 章 SPI           |
-| EEPROM 存配置（I²C）             | 第 17 章 I²C           |
-| 以太网 PHY                       | 第 20 章              |
+| Flash（一种非易失性存储器，QSPI 接口）               | 第 16 章 SPI（Serial Peripheral Interface，串行外设接口）           |
+| EEPROM 存配置（I²C）             | 第 17 章 I²C（Inter-Integrated Circuit，集成电路互联总线）           |
+| 以太网 PHY（Physical Layer Transceiver，物理层收发器）                       | 第 20 章              |
 | 板上传感器（温度、电流）         | 第 14 章 ADC           |
 | OTA 升级                         | 第 42 章              |
 | 安全启动                         | 第 40 章              |
@@ -146,7 +146,7 @@ QEMU 对两家都有非常成熟的支持。
 
 **心态**：
 1. **看数据手册（Datasheet / Reference Manual）是基本功**。芯片厂商写的几千页 PDF 不是用来读完的，是用来 **查** 的。本教材会教你怎么查。
-2. **不要怕汇编**。我们不会写大段汇编，但启动文件、ISR 入口、调试时反汇编都得能读懂十几行。
+2. **不要怕汇编**。我们不会写大段汇编，但启动文件、ISR（Interrupt Service Routine，中断服务例程）入口、调试时反汇编都得能读懂十几行。
 3. **不要怕示波器/逻辑分析仪式的思维**。即使在 QEMU 里跑，也要养成"这一刻线上是高还是低、时钟边沿在哪"的思维方式。
 4. **慢比快重要**。嵌入式坑深，赶进度的人后来都得回来填。
 

@@ -1,6 +1,6 @@
 # 第 35 章　Verilog 入门（仿真先行）
 
-> 这一章你**写一行硬件**。Verilog 不是编程语言，是硬件描述语言 —— 你不是在告诉 CPU "怎么算"，而是在告诉综合工具 "我要的电路长什么样"。先建立这个心智模型，再写 hello。
+> 这一章你**写一行硬件**。Verilog 是 HDL（Hardware Description Language，硬件描述语言）—— 你不是在告诉 CPU（Central Processing Unit，中央处理器）"怎么算"，而是在告诉综合（synthesis）工具"我要的电路长什么样"。综合是将 HDL 代码转换为门级网表的过程。先建立这个心智模型，再写 hello。
 >
 > **学完本章你应该能**：(1) 解释"硬件描述"和"软件代码"的根本差别，(2) 看懂 `always @(posedge clk)`、`<=` 与 `=`、`reg` 与 `wire`，(3) 写一个 4 位计数器 + testbench，并用 iverilog 仿真。
 
@@ -9,6 +9,12 @@
 ![Verilog入门配图](images/counter_waveform.png)
 
 ## 35.1 软件 vs 硬件描述语言
+
+**为什么 Verilog 对软件工程师是全新世界？**
+
+软件代码（C/Python）描述的是"按时间顺序执行的指令序列"，CPU 一条一条地取指、译码、执行。而 Verilog 描述的是"电路结构"——你写下的每一个 `always` 块，对应的是芯片上一块真实存在的硬件电路，所有电路**同时并行工作**，没有"先后顺序"的概念。
+
+这是软硬件思维最根本的差异：**软件是时间上的串行，硬件是空间上的并行**。
 
 ```
 软件 C 代码：
@@ -30,6 +36,8 @@
 写 Verilog 时最常犯的错就是用"软件思维":
 - 想着"先做这个再做那个" → 实际硬件是"全部同时"
 - 想着 `cnt = cnt + 1` 像 C 一样 → 在时序逻辑里这是错的
+
+Verilog 与另一种 HDL（VHDL）并列为数字电路设计的两大主流语言。本教程使用 Verilog，它的语法风格更接近 C，对软件工程师相对友好。
 
 ---
 
@@ -65,7 +73,11 @@ endmodule
 | `reg`    | 在 always 块中被赋值                | `=` (组合) 或 `<=` (时序)          |
 | `logic`  | SystemVerilog 中替代 `reg`/`wire` | 同上                              |
 
-**`reg` 名字误导**：在组合 always 里它**不是**寄存器（只是变量）；在时序 always 里才是 D 触发器。
+**`reg` 名字误导**：在组合 always 里它**不是**寄存器（只是变量）；在时序 always 里才是 D 触发器，即 FF（Flip-Flop，触发器）——存储一个比特值的基本时序单元。
+
+**`module` 是 Verilog 的基本封装单位**，类比软件中的"函数"或"类"，但本质是一块硬件电路。多个 module 可以互相实例化，构成层次化设计，这与 FPGA（Field-Programmable Gate Array，现场可编程门阵列）的层次化映射是一一对应的。
+
+FPGA 是一种可重复编程的芯片，内部由大量 LUT（Look-Up Table，查找表，FPGA 的基本逻辑单元）、FF 和互连线路组成。综合工具会将你的 Verilog 代码"翻译"成这些基本单元的组合。与之对应的是 ASIC（Application-Specific Integrated Circuit，专用集成电路），一旦流片制造就固化不可更改；FPGA 的优势是可以反复重新配置，非常适合原型验证和小批量生产。
 
 ---
 
@@ -91,7 +103,9 @@ always @(posedge clk) begin
 end
 ```
 
-**直觉**：`<=` 表示"在时钟边沿那一刻，所有右侧值同时算好，再同时赋给左侧" —— 这正是 D 触发器的物理行为。
+**直觉**：`<=` 表示"在时钟边沿那一刻，所有右侧值同时算好，再同时赋给左侧" —— 这正是 D 触发器（FF）的物理行为。
+
+可以这样理解：`<=` 叫"非阻塞赋值"，意思是"登记一个赋值请求，等本时钟沿的所有计算都完成后再统一执行"；`=` 叫"阻塞赋值"，意思是"立即赋值，后面的代码能看到新值"。在时序电路中，`<=` 才符合触发器的物理行为。
 
 ---
 
@@ -119,7 +133,7 @@ endmodule
 
 ### Testbench
 
-testbench 不可综合，是模拟器看的：
+测试台（testbench）：用于仿真验证的测试代码框架，不综合成硬件。testbench 是"只给仿真器看的"代码，它产生激励信号、连接被测模块，观察输出是否符合预期。其中 `dut` 即 DUT（Device Under Test，被测设备/模块），指正在验证的那个模块实例。
 
 ```verilog
 `timescale 1ns/1ps
@@ -148,6 +162,8 @@ module tb_counter4;
 endmodule
 ```
 
+`$dumpfile("wave.vcd")` 生成的是 VCD（Value Change Dump，值变化转储格式，波形文件格式）文件，记录仿真过程中每个信号的变化，供波形查看工具分析。
+
 仿真：
 
 ```bash
@@ -155,6 +171,10 @@ iverilog -o sim tb_counter4.v counter4.v
 vvp sim                # 命令行输出 + 生成 wave.vcd
 gtkwave wave.vcd       # GUI 看波形
 ```
+
+其中：
+- Icarus Verilog（iverilog，开源 Verilog 仿真器）：将 Verilog 代码编译并执行仿真，是入门最常用的开源工具
+- GTKWave（开源波形查看工具）：将 VCD 波形文件以图形化方式展示，让你直观地看到每个信号随时间的变化
 
 ---
 
@@ -220,6 +240,8 @@ endgenerate
 
 仿真和综合都展开成 8 个并行实例。
 
+参数化设计（`parameter`）是硬件复用的重要手段：类比软件里的泛型/模板，同一份 RTL（Register Transfer Level，寄存器传输级描述）代码通过参数配置，可以生成 8 位宽、16 位宽或任意位宽的硬件模块，避免重复造轮子。RTL 是 Verilog 设计的主要抽象层次，描述数据在寄存器之间如何流动和变换。
+
 ---
 
 ## 35.8 SystemVerilog 简介
@@ -231,7 +253,9 @@ Verilog-2001 之后的扩展，**99% 现代项目用 SystemVerilog**（文件 `.
 - 接口 (`interface`) 打包总线
 - `enum` / `struct` / `union`
 - `assert` 断言
-- `class` + 约束随机 → 验证 (UVM 基础)
+- `class` + 约束随机 → 验证（UVM（Universal Verification Methodology，通用验证方法学）基础）
+
+SV（SystemVerilog，Verilog 的扩展语言，增加了面向对象验证特性）在验证领域尤其强大：它引入了类、随机约束、覆盖率模型等面向对象特性，让大规模芯片验证变得更加系统化和自动化。UVM 正是建立在 SystemVerilog 之上的工业级验证框架，在商用芯片设计中几乎是标配。
 
 **这一章 demo 用纯 Verilog 保证 iverilog 兼容**，后面 36 章用一些 SV 特性。
 

@@ -1,6 +1,6 @@
 # 第 33 章　用户态接口：sysfs / procfs / netlink / UIO
 
-> 内核驱动写完了，怎么让用户态程序"看到"它的状态、改它的参数？Linux 给了五条主要通道：device 节点 (chrdev)、sysfs、procfs、netlink、UIO。这一章过一遍每条通道的适用场景。
+> 内核驱动写完了，怎么让用户态程序"看到"它的状态、改它的参数？Linux 给了五条主要通道：device 节点 (chrdev)、sysfs（内核向用户空间导出设备信息的虚拟文件系统）、procfs（Process File System，进程信息文件系统）、netlink、UIO。这一章过一遍每条通道的适用场景。
 >
 > **学完本章你应该能**：(1) 知道何时该选哪条接口，(2) 看到 `/sys/class/.../value` 知道是 sysfs attr，(3) 解释 netlink 的事件推送模型，(4) 知道 UIO / VFIO 让"用户态写驱动"可能。
 
@@ -16,13 +16,15 @@
 | sysfs      | 是   | 拉取       | 低     | 配置 / 状态查询，简单设备控制             |
 | procfs     | 是   | 拉取       | 低     | 同 sysfs，但渐被取代                     |
 | netlink    | 是   | 推送 + 双向 | 高     | uevent、网卡事件、ipsec 配置             |
-| UIO/VFIO   | 是   | mmap MMIO  | 中     | 用户态写驱动（DPDK、SPDK）                |
+| UIO/VFIO   | 是   | mmap（Memory Map，内存映射）MMIO | 中 | 用户态写驱动（DPDK、SPDK）     |
+
+> **为什么需要这么多通道？** 不同场景需求不同：传输音频数据需要高带宽的流式接口（/dev 节点）；查询 CPU 温度只需要偶尔读一个整数（sysfs 一行命令搞定）；U 盘插入时需要内核主动"推送"通知给用户态（netlink uevent）。Linux 遵循"机制与策略分离"的设计哲学，提供多种机制，让开发者根据场景选择。
 
 ---
 
 ## 33.2 sysfs：现代驱动的"控制面板"
 
-每个 device 自动在 `/sys/class/...` 下有一个目录。驱动只要定义 attribute：
+sysfs（内核向用户空间导出设备信息的虚拟文件系统）挂载在 `/sys/`，由 kobject（Kernel Object，内核对象，sysfs的基础数据结构）体系驱动。每个 device 自动在 `/sys/class/...` 下有一个目录。驱动只要定义 attribute：
 
 ```c
 static ssize_t freq_show(struct device *dev, struct device_attribute *a, char *buf)
@@ -56,7 +58,7 @@ cat /sys/class/my/device0/freq        # 读
 echo 200 > /sys/class/my/device0/freq # 写
 ```
 
-**每个 attr 一次只暴露一个值** —— 字符串 / 整数。这是 sysfs 的核心约束：**one value per file**。复杂的二进制结构请用 ioctl。
+**每个 attr 一次只暴露一个值** —— 字符串 / 整数。这是 sysfs 的核心约束：**one value per file**。复杂的二进制结构请用 ioctl（Input/Output ConTroL，设备IO控制接口）。
 
 ### Hwmon / Thermal 等都基于 sysfs
 
@@ -67,23 +69,27 @@ cat /sys/class/thermal/thermal_zone0/temp     # 65000 (= 65°C)
 
 这就是 sysfs 在生态里的位置。
 
+> **kobject 是什么？** kobject（Kernel Object，内核对象）是 Linux 设备模型的基础数据结构，它维护了对象的引用计数（保证驱动不被提前卸载）和在 sysfs 中的目录项。你写的每个 device、driver、bus 都内嵌了一个 kobject，正是 kobject 让 `/sys/` 目录树得以建立。开发者通常不直接操作 kobject，而是通过更高层的 device / platform_device 间接使用它。
+
 ---
 
 ## 33.3 procfs：上古遗产
 
-`/proc/<pid>` 用于看进程，`/proc/sys/` 是 sysctl 接口，`/proc/<driver>` 历史上是早期驱动接口（**现在新驱动不推荐再加 /proc 项**，统一用 sysfs / debugfs）。
+procfs（Process File System，进程信息文件系统）挂载在 `/proc/`。`/proc/<pid>` 用于看进程，`/proc/sys/` 是 sysctl 接口，`/proc/<driver>` 历史上是早期驱动接口（**现在新驱动不推荐再加 /proc 项**，统一用 sysfs / debugfs（内核调试信息虚拟文件系统））。
 
 但有些**仍然广泛使用的接口**：
 
 ```bash
 cat /proc/cpuinfo
 cat /proc/meminfo
-cat /proc/interrupts          # 每条 IRQ 在每个 CPU 上的计数
+cat /proc/interrupts          # 每条 IRQ（Interrupt ReQuest，中断请求）在每个 CPU（Central Processing Unit，中央处理器）上的计数
 cat /proc/devices             # 已注册的 char / block 设备
 cat /proc/iomem               # 物理内存分配地图
 ```
 
 `/proc/interrupts` 是中断调试的金矿。
+
+> **procfs 为什么被 sysfs 取代？** procfs 是 1990 年代的产物，当时 Linux 设备还少，用 /proc 管理设备信息够用。随着 Linux 设备模型愈发复杂（数百个驱动、热插拔、电源管理），procfs 的无结构文本接口变得难以维护。sysfs 有严格的"一文件一属性"约定和 kobject 体系支撑，更适合做设备管理。但历史遗留的 procfs 接口（如 /proc/cpuinfo）因为太多脚本和工具依赖，不可能删除，所以两者并存至今。
 
 ---
 
@@ -101,18 +107,20 @@ nlmsg_multicast(my_nl_sock, skb, ...);
 ```
 
 主流应用：
-- **uevent**：udev 监听设备热插拔
-- **rtnetlink**：网卡 up/down、路由、ARP（ip 命令的后台）
+- **uevent**：udev（userspace /dev，用户空间设备管理器）监听设备热插拔
+- **rtnetlink**：网卡 up/down、路由、ARP（`ip` 命令的后台）
 - **NFNETLINK**：iptables / nftables 配置
 - **genetlink**：通用 generic netlink，任何驱动都能用
 
-uevent 是嵌入式系统里**最常用** 的 —— 插拔 USB / SD 卡时 udev 收到 netlink 消息触发规则。
+uevent 是嵌入式系统里**最常用**的 —— 插拔 USB / SD 卡时 udev 收到 netlink 消息触发规则。
+
+> **uevent 工作原理**：每次你插入 U 盘，内核的 USB 子系统会调用 `kobject_uevent()`，通过 netlink 广播一条消息（包含设备类型、路径、厂商 ID 等）。udev 守护进程监听这个 socket，收到消息后查找 `/etc/udev/rules.d/` 里的规则，决定在 `/dev/` 下创建哪个设备文件、设什么权限、执行什么脚本。这就是为什么插 U 盘后 `/dev/sdb` 会自动出现。
 
 ---
 
 ## 33.5 UIO / VFIO：用户态驱动
 
-让用户态程序 mmap 设备的 MMIO + 接收 IRQ → **可以在用户态写驱动**。
+让用户态程序 mmap（Memory Map，内存映射）设备的 MMIO + 接收 IRQ → **可以在用户态写驱动**。
 
 ```c
 /* 用户程序 */
@@ -131,7 +139,7 @@ read(fd, &count, 4);                         // 阻塞等 IRQ
 
 **缺点**：
 - 需要 root 或 CAP_SYS_RAWIO
-- 不能用复杂的内核子系统（DMA、IRQ 调度、Cache 同步要自己来）
+- 不能用复杂的内核子系统（DMA（Direct Memory Access，直接内存访问）、IRQ 调度、Cache 同步要自己来）
 
 **VFIO** 是 UIO 升级版，加了 IOMMU 隔离 + 中断 affinity，是 KVM 设备直通的基础。
 
@@ -139,7 +147,7 @@ read(fd, &count, 4);                         // 阻塞等 IRQ
 
 ## 33.6 debugfs：开发用接口
 
-挂在 `/sys/kernel/debug/`。比 sysfs 自由（一个 attr 多个值、二进制都行），但**不保证 ABI 稳定** —— 仅用于内部调试。
+debugfs（内核调试信息虚拟文件系统）挂在 `/sys/kernel/debug/`。比 sysfs 自由（一个 attr 多个值、二进制都行），但**不保证 ABI 稳定** —— 仅用于内部调试。
 
 ```c
 struct dentry *dir = debugfs_create_dir("my_drv", NULL);
@@ -150,6 +158,8 @@ debugfs_create_blob("dump", 0444, dir, &dump_blob);
 
 很多内核子系统暴露 debugfs 用于查看内部状态（PSI、cgroup、bpf）。
 
+> **sysfs vs debugfs 的选择**：如果一个接口要给最终用户或脚本使用，用 sysfs（稳定 ABI，一文件一属性）；如果只是开发调试期间用（看驱动内部状态、强制触发某个行为），用 debugfs（随意，不承诺稳定性）。生产代码发布前通常会把 debugfs 接口去掉或隐藏，避免用户误用。
+
 ---
 
 ## 33.7 ioctl：仍然不可替代的"瑞士军刀"
@@ -159,7 +169,9 @@ debugfs_create_blob("dump", 0444, dir, &dump_blob);
 - 命令式操作（reset、start、stop）
 - 异步事件 + ioctl 完成
 
-V4L2、KVM、DRM 都重度用 ioctl。**新内核风格用 fdget 系列把 ioctl 弄得相对安全**，但 ABI 一旦发布就要永远保持兼容，**最大的设计陷阱**。
+V4L2（Video for Linux 2，Linux视频子系统框架）、KVM、DRM 都重度用 ioctl。**新内核风格用 fdget 系列把 ioctl 弄得相对安全**，但 ABI 一旦发布就要永远保持兼容，**最大的设计陷阱**。
+
+> **ioctl ABI 陷阱**：一旦你的 ioctl 命令被用户程序使用并发布，就几乎不可能改变其语义。Linux 内核有大量注释写着"这个 ioctl 设计有缺陷，但为了兼容性不能改"。所以设计 ioctl 时要格外谨慎：命令号用 `_IO/_IOR/_IOW/_IOWR` 宏生成（内嵌类型信息，防止误用），参数结构体要预留扩展字段，不确定的设计先不暴露给外部。
 
 ---
 

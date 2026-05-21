@@ -4,6 +4,9 @@
 >
 > **学完本章你应该能**：(1) 解释 Secure Boot 链是怎么工作的，(2) 区分 TrustZone-A 和 TrustZone-M，(3) 知道 TPM / SE 元件的角色，(4) 了解物理攻击 (侧信道、故障注入) 的存在。
 
+> **为什么嵌入式安全与桌面安全不同？**
+> 桌面 / 服务器有操作系统、防病毒、网络防火墙，而且出了问题可以找人处理。嵌入式设备往往：(1) 无人值守部署在野外（工厂、家里、车上）；(2) 资源极度受限，无法跑复杂安全软件；(3) 固件一旦被替换，设备就变成攻击者的跳板；(4) 密钥、私钥一旦泄露就得全线召回。因此嵌入式安全必须**从硬件层出发、依靠不可篡改的信任根、逐层验证**，而不是靠运行时检测。
+
 ---
 
 ![嵌入式安全配图](images/trust_chain.png)
@@ -42,8 +45,10 @@
 
 ![40.2 Root of Trust：信任从哪开始](images/generated/root_of_trust_direct.png)
 
-**Root of Trust (RoT)** = 信任链的最底层 = **不可改的硬件**。  
-通常是：芯片厂商 burn 在 OTP / e-Fuse 里的一个公钥哈希。
+**Root of Trust (RoT，信任根)** = 信任链的最底层 = **不可改的硬件**。
+通常是：芯片厂商 burn 在 OTP（One-Time Programmable，一次性可编程存储器）/ e-Fuse 里的一个公钥哈希。
+
+信任链的逻辑是：**每一级代码只信任被上一级验证过的代码**。一旦最底层的 BootROM 和 OTP 公钥哈希不可篡改，整条链就是可靠的。
 
 ---
 
@@ -67,6 +72,8 @@
 
 **关键点**：私钥永远不上设备，只在厂家签名服务器里。被攻破 = 召回。
 
+签名用到的算法通常是 **RSA（Rivest-Shamir-Adleman，一种非对称加密算法）** 或 **ECC（Elliptic Curve Cryptography，椭圆曲线密码学）**，以及哈希算法 **SHA-256（SHA，Secure Hash Algorithm，安全哈希算法；SHA-256 是 SHA-2 家族的 256 位版本，常用于完整性校验）**。
+
 ### 防回滚 (Anti-rollback)
 
 只验签不够。攻击者把固件刷成"有漏洞的旧版本"（旧版本签名仍合法）→ 利用漏洞 jailbreak。
@@ -77,7 +84,12 @@
 
 ## 40.4 ARM TrustZone
 
-ARM 的硬件级"两个世界"：
+**ARM TrustZone（ARM提供的硬件安全扩展，将 SoC 划分为安全世界和普通世界）** 是 ARM 的硬件级"两个世界"隔离机制：
+
+- **REE（Rich Execution Environment，富执行环境，即普通操作系统侧）**：运行 Linux / Android 及普通应用
+- **TEE（Trusted Execution Environment，可信执行环境）**：运行受保护的安全代码（密钥管理、加解密等）
+
+两个世界共用同一颗 CPU，但硬件强制隔离，普通世界无法直接访问安全世界的内存和外设。
 
 ```
    ┌──── Normal World ────┐   ┌──── Secure World ────┐
@@ -107,28 +119,32 @@ ARM 的硬件级"两个世界"：
 
 | 元件               | 特点                                  | 用途                          |
 |--------------------|---------------------------------------|-------------------------------|
-| **TPM 2.0**        | 通用安全协处理器 (TCG 标准)            | PC 启动测量、密钥存储           |
+| **TPM 2.0**        | 通用安全协处理器 (TCG 标准)，全称 Trusted Platform Module（可信平台模块） | PC 启动测量、密钥存储           |
 | **Secure Element**  | 智能卡级安全 (CC EAL5+)                | 银行卡、SIM 卡、Apple Secure Enclave |
-| **HSM**            | 服务器级 (硬件安全模块)                | 数据中心密钥管理                |
+| **HSM**            | HSM（Hardware Security Module，硬件安全模块），服务器级 | 数据中心密钥管理                |
 
 特点：
 - 私钥**永不离开芯片**
 - 内部跑加密 / 签名运算
 - 物理防探针（封装内 mesh、抗故障注入）
 
-ECC 椭圆曲线 / RSA 签名 / AES 加密都靠这些芯片提供。
+**ECC（椭圆曲线密码学）** 签名 / **RSA（非对称加密）** 签名 / **AES（Advanced Encryption Standard，高级加密标准）** 加密都靠这些芯片提供。
 
 ---
 
 ## 40.6 加密加速器 IP
 
 SoC 内部常带：
-- **AES 加速器**：~10 GB/s 吞吐
-- **SHA-256 加速器**：~1 GB/s
-- **RNG (真随机数发生器)**：硅片噪声源
-- **PKE (公钥加速)**：RSA-4096 / ECC-P256
+- **AES 加速器**：~10 GB/s 吞吐，用于块加密 / 解密
+- **SHA-256 加速器**：~1 GB/s，用于完整性校验
+- **RNG (真随机数发生器)**：硅片噪声源，用于生成随机密钥
+- **PKE (公钥加速)**：RSA-4096 / ECC-P256，加速非对称运算
+
+另外还有 **HMAC（Hash-based Message Authentication Code，基于哈希的消息认证码）** 加速，常用于 **TLS（Transport Layer Security，传输层安全协议）** 握手和固件完整性验证；**DTLS（Datagram TLS，基于 UDP 的 TLS）** 则用于 UDP 通信场景（如 CoAP 协议）。
 
 软件用 `mbedTLS` / `wolfSSL` 等库，库自动调用硬件。**几十倍速度提升 + 抗侧信道**（硬件实现一般针对 timing attack 加固）。
+
+**PKI（Public Key Infrastructure，公钥基础设施）** 是管理这些密钥、证书的体系架构，设备出厂时会被注入由 PKI 颁发的证书用于身份认证。
 
 ---
 
@@ -165,6 +181,8 @@ cd build && make -f qemu_v8.mk
 - Secure world OP-TEE OS
 
 写一个 TA = 一段在 Secure 世界跑的代码，正常世界通过 OP-TEE API 调用。**密钥 / 签名 / 解密都在 TA 内，永不暴露给 Linux**。
+
+这是 TEE 的典型用法：正常世界（REE）的应用需要做敏感操作时，通过标准接口"请求" Secure 世界的 TA 来完成，结果传回来，但中间的密钥和运算过程从不离开安全区。
 
 ---
 

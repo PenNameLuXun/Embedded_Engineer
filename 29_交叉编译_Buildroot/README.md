@@ -1,6 +1,6 @@
 # 第 29 章　交叉编译 / Buildroot
 
-> 嵌入式 Linux 系统 = **kernel + bootloader + 根文件系统 (rootfs)**。这三样东西怎么从源码 build 出来？这一章给你两个工具：手工交叉编译（理解每一步），以及 Buildroot（一键 build 全栈）。
+> 嵌入式 Linux 系统 = **kernel + bootloader + 根文件系统 (rootfs（Root File System，根文件系统）)**。这三样东西怎么从源码 build 出来？这一章给你两个工具：手工交叉编译（理解每一步），以及 Buildroot（一个用于构建嵌入式Linux系统的自动化构建工具，一键 build 全栈）。
 >
 > **学完本章你应该能**：(1) 解释为什么需要"交叉"编译，(2) 手工用 `arm-linux-gnueabihf-gcc` 编一个 Hello World 并在 QEMU 上跑，(3) 用 Buildroot 5 分钟 build 出能跑的 ARM Linux 镜像，(4) 知道 Buildroot vs Yocto 的差别。
 
@@ -23,7 +23,9 @@
 
 ![29.1 为什么要交叉编译](images/generated/why_cross_compile.png)
 
-工具链命名约定：`<arch>-<vendor>-<os>-<libc>-gcc`，例：
+交叉编译是嵌入式开发的基本功。目标板（ARM、RISC-V、MIPS）往往 CPU（Central Processing Unit，中央处理器）性能弱、内存小，根本没办法快速编译大型项目。所以我们在性能强的 x86_64 开发机上，用"交叉编译工具链"生成目标架构的可执行文件。
+
+GCC（GNU Compiler Collection，GNU编译器集合）工具链命名约定：`<arch>-<vendor>-<os>-<libc>-gcc`，例：
 - `arm-linux-gnueabihf-gcc`：ARM + Linux + glibc + hard-float
 - `aarch64-linux-gnu-gcc`：ARM64 + Linux + glibc
 - `arm-none-eabi-gcc`：ARM + bare-metal（没 OS，第 2 部分用的）
@@ -54,6 +56,8 @@ qemu-arm-static ./hello
 
 `-static` 让 hello 不依赖目标系统的 glibc，简化第一次实验。**真正项目用动态链接**。
 
+> **动态链接 vs 静态链接**：静态链接把所有库的代码都打进可执行文件，文件大但没有依赖问题；动态链接文件小但需要目标系统有对应的 `.so` 库文件。嵌入式项目通常用动态链接，把公共库放在 rootfs 里共享。
+
 ---
 
 ## 29.3 直接在 QEMU 跑一个完整 Linux
@@ -76,18 +80,18 @@ Booting Linux on physical CPU 0x0
 Linux version 6.x.x ...
 ...
 /bin/sh: can't access tty; job control turned off
-# 
+#
 ```
 
 按 `Ctrl-A x` 退出。
 
-但 zImage / DTB / rootfs.cpio.gz 怎么来？这就是 Buildroot 干的事。
+但 zImage / DTB（Device Tree Blob，设备树二进制文件）/ rootfs.cpio.gz 怎么来？这就是 Buildroot 干的事。
 
 ---
 
 ## 29.4 Buildroot：5 分钟 build 一个嵌入式 Linux
 
-Buildroot 是一套 Makefile 集合：根据 `.config` 自动下载 + patch + 交叉编译 内核、bootloader、用户程序，最后打包成镜像。
+Buildroot（一个用于构建嵌入式Linux系统的自动化构建工具）是一套 Makefile 集合：根据 `.config` 自动下载 + patch + 交叉编译 内核、bootloader、用户程序，最后打包成镜像。
 
 ```bash
 git clone https://git.buildroot.net/buildroot
@@ -130,6 +134,8 @@ bin  etc  ...
 
 **5 分钟之内你拥有了一台完整的虚拟嵌入式设备**。
 
+> **Buildroot 做了什么魔法？** 本质上它是一个"超大型 Makefile"，帮你自动做了这些事：1) 下载 GCC 交叉工具链；2) 下载并交叉编译 U-Boot（Universal Bootloader，通用引导加载程序）；3) 下载并交叉编译 Linux 内核；4) 下载并交叉编译 busybox 等用户态程序；5) 把所有东西组装成可以直接烧写的镜像文件。手工做这些要几天，Buildroot 帮你自动化了一切。
+
 ---
 
 ## 29.5 Buildroot 的工作方式
@@ -164,7 +170,7 @@ buildroot/
 
 ## 29.6 Buildroot vs Yocto
 
-| 维度          | Buildroot                  | Yocto                              |
+| 维度          | Buildroot                  | Yocto（一个面向嵌入式Linux的灵活构建框架）|
 |---------------|----------------------------|-------------------------------------|
 | 哲学          | Makefile + Kconfig，简单   | 元数据 (bb 文件) + Layer，复杂      |
 | 学习曲线      | 1 天上手                    | 1 周-1 月                            |
@@ -225,7 +231,9 @@ cd rootfs
 find . | cpio -H newc -o | gzip > ../initramfs.cpio.gz
 ```
 
-`init=/init` + `root=/dev/ram` 启动。这就是教科书级最小 rootfs。
+`init=/init` + `root=/dev/ram` 启动。这就是教科书级最小 rootfs（Root File System，根文件系统）。
+
+> **为什么这个目录结构就够了？** 你只需要：busybox（一个可执行文件，假装成 300 多个 Linux 命令）、动态库（libc.so 等，busybox 运行需要）、几个特殊目录（/proc /sys /dev 是内核挂载点）。这就是一个"够用"的 Linux 系统的最小集。整个 rootfs 打包后通常只有几 MB 到几十 MB。
 
 ---
 
